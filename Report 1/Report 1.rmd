@@ -1,0 +1,20 @@
+---
+title: "Sprawozdanie z listy 1"
+subtitle: "Eksploracja danych"
+author: "Marta Stankiewicz, Paweł Nowak  \n numery albumów: 282244 282223"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[OT4]{polski}
+   - \usepackage[utf8]{inputenc}
+   - \usepackage{graphicx}
+   - \usepackage{float}
+output: 
+  pdf_document:
+    toc: true
+    fig_caption: yes
+    fig_width: 5 
+    fig_height: 4 
+    number_sections: true
+fontsize: 12pt 
+---
+
