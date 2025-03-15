@@ -30,6 +30,9 @@ knitr::opts_chunk$set(fig.pos = "H", out.extra = "", fig.align = "center")
 ```{r Read data and libraries, include=FALSE}
 library(dplyr)
 library(tidyr)
+library(kableExtra)
+library(knitr)
+
 # Wczytywanie ramki danych.
 dane <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv")
 
@@ -91,6 +94,30 @@ dane <- dane %>%
   mutate(across(all_of( c("customerID", "TotalCharges")), ~NULL)) # Skasuj redundantne kolumny
 
 ```
+
+
+# Etap 2. Analiza opisowa - wskaźniki sumaryczne i wykresy.
+
+```{r selecting numeric columns, echo=FALSE}
+  num.cols <- names(dane %>% select( where(is.numeric))) # Znajdź kolumny numeryczne.
+
+# Do poprawy - wyświetlanie liczb do 2 miejsc po przecinku. 
+# Pewnie samo summary jest lepsze, ale trzeba z nazw wskaźników zrobić nazwy wierszy.
+summary.df <- t(data.frame(
+  Min = sapply(dane[num.cols], min),
+  Mean = sapply(dane[num.cols], mean),
+  Median = sapply(dane[num.cols], median),
+  SD = sapply(dane[num.cols], sd),
+ IQR = sapply(dane[num.cols], IQR),
+ Max = sapply(dane[num.cols], max)
+))
+
+kable(summary.df, digits = 2, caption = "Wskaźniki sumaryczne dla zmiennych ciągłych",
+      align = "lr")
+```
+
+
+
 
 
 
