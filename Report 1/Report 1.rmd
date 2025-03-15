@@ -17,4 +17,65 @@ output:
     number_sections: true
 fontsize: 12pt 
 ---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+knitr::opts_chunk$set(fig.pos = "H", out.extra = "", fig.align = "center")
+```
+
+
+
+# Etap 1. Przygotowanie danych. Podstawowe informacje o danych.
+
+```{r Read data and libraries, include=FALSE}
+library(dplyr)
+library(tidyr)
+# Wczytywanie ramki danych.
+dane <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv")
+
+
+```
+
+```{r dtypes casting, counting rows and cols, include=FALSE}
+# Ile jest wierszy, a ile - zmiennych?
+n.row <- nrow(dane) # 7043 wierszy.
+n.col <- ncol(dane) # 21 kolumn.
+
+
+
+# Dane zawierają sporo zmiennych jakościowych nieporzadkowych, które zostały błędnie wczytane jako zmienne typu napis. 
+vars.to.cast <- c("gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService", "MultipleLines",
+                  "InternetService", "OnlineSecurity", "OnlineBackup", "DeviceProtection",
+                  "TechSupport", "StreamingTV", "StreamingMovies", "Contract", "PaperlessBilling",
+                  "PaymentMethod", "Churn")
+
+# Dokonaj konwersji na typ `factor`.
+dane[vars.to.cast] <- lapply(dane[vars.to.cast], as.factor)
+
+```
+
+
+
+
+```{r missing values handling, include=FALSE}
+# Znajdź cechy, które zawierają (standardowo kodowane) wartości brakujące
+n.missing <- dane %>% 
+  summarize(across(everything(), function(x) { sum(is.na(x)) } ) ) %>% 
+  pivot_longer( everything(), names_to = "variable", values_to = "na.count" ) %>%
+  filter(na.count > 0)
+
+
+
+```
+
+## Opis danych, rozmiar ramki danych, typy danych.
+
+Zbiór danych, którym sie zajmujemy, zawiera informacje o **`r n.row`** klientach sieci sklepów **Telco**, która oferuje różne usługi z branży telekomunikacji, rozrywki, Internetu itp.\
+Każdy klient został opisany przy użyciu **`r n.col`** zmiennych, wsród których znajdziemy te opisujące dane osobiste klienta (np. zmienna *Partner*, wskazująca, czy dana osoba ma partnera), jak i te określające, czy dany klient skorzystał z usług oferowanych przez firmę. Najwięcej cech pochodzi właśnie z tej drugiej grupy zmiennych.\
+Większość zmiennych są zmiennymi ilośćiowymi nieporządkowymi, określającymi między innymi, czy dany klient wykupił daną telekomunikacyjną.  Przykładowo — zmienna *OnlineSecurity* informuje, czy osoba korzysta z usługi bezpieczeństwa w sieci (*Yes*), nie korzysta (*No*) czy też w ogóle nie ma dostępu do Internetu (*No internet service*).
+
+
+## Brakujące wartości.
+Ze wszystkich zmiennych dostępnych w ramce danych, jedynie zmienna *`r n.missing["variable"][1]`* zawiera brakujące wartości. Zawiera ich *`r n.missing["na.count"][1]`*. Wartości brakujące są kodowane standardowo, tj. jako *NA*.
+
 

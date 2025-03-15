@@ -1,5 +1,8 @@
 library(dplyr)
 library(tidyr)
+
+
+# ETAP 1
 # Wczytywanie ramki danych.
 dane <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv")
 
@@ -29,3 +32,9 @@ n.missing <- dane %>%
              
 # Jest tylko jedna taka zmienna - "TotalCharges".
 print(n.missing)
+
+
+
+
+
+
