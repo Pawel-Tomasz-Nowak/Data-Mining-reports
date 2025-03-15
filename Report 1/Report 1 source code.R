@@ -31,10 +31,10 @@ n.missing <- dane %>%
 
              
 # Jest tylko jedna taka zmienna - "TotalCharges".
-print(n.missing)
 
 
-
-
+dane <- dane %>%
+  drop_na(all_of(n.missing$variable)) %>% # Skasuj wiersze, które mają wartości brakujące dla zmiennych z n.missing$variable
+  mutate(across(all_of(n.missing$variable), ~NULL))
 
 

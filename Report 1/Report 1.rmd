@@ -65,7 +65,6 @@ n.missing <- dane %>%
   filter(na.count > 0)
 
 
-
 ```
 
 ## Opis danych, rozmiar ramki danych, typy danych.
@@ -76,6 +75,23 @@ Większość zmiennych są zmiennymi ilośćiowymi nieporządkowymi, określają
 
 
 ## Brakujące wartości.
-Ze wszystkich zmiennych dostępnych w ramce danych, jedynie zmienna *`r n.missing["variable"][1]`* zawiera brakujące wartości. Zawiera ich *`r n.missing["na.count"][1]`*. Wartości brakujące są kodowane standardowo, tj. jako *NA*.
+Ze wszystkich zmiennych dostępnych w ramce danych, jedynie zmienna *`r n.missing["variable"][1]`* zawiera brakujące wartości. Zawiera ich *`r n.missing["na.count"][1]`*. Wiersze, które nie przyjmują dla tej zmiennej żadnej wartości, zostaną porzucone.
+Wartości brakujące są kodowane standardowo, tj. jako *NA*. Nie znajdujemy w zbiorze danych niestandardowej reprezentacji wartośći brakujących.
+
+
+## Okreslenie istotności zmiennych, eliminacja rendundancji danych.
+Naszym celem jest przewidzenie, czy dany klient zrezygnuje z usług firmy na podstawie dostępnych cech. W celu wyeliminowania redundancji danych, skasujemy te zmienne, które albo nie mają żadnego wpływu na decyzje klienta albo są funkcją pozostałych atrybutów.\
+Atrybut **customerID** z pewnością nie ma wpływu na zachowanie konsumenckie klienta, bowiem jest jedynie jego unikalnym identyfikatorem.\
+Racjonalne wydaje się również skasowanie kolumny **TotalCharges**. Zlicza ona całkowity koszt poniesiony przez klienta od początku zawarcia umowy z firmą. Tę wartość możemy bez straty informacji otworzyć, mnożąc ze sobą zmienne **tenure** oraz **MonthlyCharges** określające odpowiednio długość trwania umowy (wyrażona w miesiącach) i miesięczną taryfę za usługi.
+
+
+```{r dropping irrelevant variables, include=FALSE}
+dane <- dane %>%
+  drop_na(all_of(n.missing$variable)) %>% # Skasuj wiersze, które mają wartości brakujące dla zmiennych z n.missing$variable
+  mutate(across(all_of( c("customerID", "TotalCharges")), ~NULL)) # Skasuj redundantne kolumny
+
+```
+
+
 
 
