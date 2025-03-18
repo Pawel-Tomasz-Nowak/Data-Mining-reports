@@ -1,6 +1,6 @@
 library(dplyr)
 library(tidyr)
-
+library(ggplot2)
 
 # ETAP 1
 # Wczytywanie ramki danych.
@@ -31,10 +31,22 @@ n.missing <- dane %>%
 
              
 # Jest tylko jedna taka zmienna - "TotalCharges".
-
-
 dane <- dane %>%
   drop_na(all_of(n.missing$variable)) %>% # Skasuj wiersze, które mają wartości brakujące dla zmiennych z n.missing$variable
   mutate(across(all_of(n.missing$variable), ~NULL))
+
+
+# Wydobywanie zmiennych typu 'factor'
+factors.vars <- names( select_if(dane, is.factor))
+
+
+for (var in factors.vars){
+
+  p <- ggplot(dane, aes(x = !!sym(var), fill = !!sym(var))) + geom_bar( ) +
+    ggtitle(paste("Wykres słupkowy", var))
+
+  print(p)
+
+}
 
 
