@@ -31,22 +31,39 @@ n.missing <- dane %>%
 
              
 # Jest tylko jedna taka zmienna - "TotalCharges".
-dane <- dane %>%
-  drop_na(all_of(n.missing$variable)) %>% # Skasuj wiersze, które mają wartości brakujące dla zmiennych z n.missing$variable
-  mutate(across(all_of(n.missing$variable), ~NULL))
+# Obliczenie średniej dla TotalCharges, ignorując brakujące wartości
+mean_value <- mean(dane$TotalCharges, na.rm = TRUE)
 
+# Imputacja brakujących wartości średnią
+dane$TotalCharges[is.na(dane$TotalCharges)] <- mean_value
 
 # Wydobywanie zmiennych typu 'factor'
 factors.vars <- names( select_if(dane, is.factor))
 
+# 
+# for (var in factors.vars){
+# 
+#   p <- ggplot(dane, aes(x = !!sym(var), fill = !!sym(var))) + geom_bar( ) +
+#     ggtitle(paste("Wykres słupkowy", var))
+# 
+#   print(p)
+# 
+# }
 
-for (var in factors.vars){
+# Znajdź zmienne numeryczne ciągłe.
+# num.vars <- names( select_if(dane, is.numeric))
+# 
+# 
+# ggplot(dane, aes(y = MonthlyCharges)) + geom_boxplot() + 
+#   ggtitle("Wykres pudełkowy dla MonthlyCharges")+
+#   theme(axis.ticks.x = element_blank(), axis.text.x = element_blank())
+# 
+# 
+# var <- "tenure"
+# sd_sample <- sd(as.vector(dane[var]))
+# 
+# 
+# 
 
-  p <- ggplot(dane, aes(x = !!sym(var), fill = !!sym(var))) + geom_bar( ) +
-    ggtitle(paste("Wykres słupkowy", var))
-
-  print(p)
-
-}
 
 

@@ -17,29 +17,30 @@ output:
     number_sections: true
 fontsize: 12pt 
 ---
-```{r setup, include=FALSE}
+```{r setup, include=FALSE, cache = TRUE}
 knitr::opts_chunk$set(echo = TRUE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 knitr::opts_chunk$set(fig.pos = "H", out.extra = "", fig.align = "center")
+library(dplyr)
+library(tidyr)
+library(kableExtra)
+library(knitr)
+library(ggplot2)
+library(gridExtra)
 ```
 
 
 
 # Etap 1. Przygotowanie danych. Podstawowe informacje o danych.
 
-```{r Read data and libraries, include=FALSE}
-library(dplyr)
-library(tidyr)
-library(kableExtra)
-library(knitr)
-
+```{r Read data and libraries, include=FALSE, cache = TRUE}
 # Wczytywanie ramki danych.
 dane <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv")
 
 
 ```
 
-```{r dtypes casting, counting rows and cols, include=FALSE}
+```{r dtypes casting, counting rows and cols, include=FALSE, cache = TRUE}
 # Ile jest wierszy, a ile - zmiennych?
 n.row <- nrow(dane) # 7043 wierszy.
 n.col <- ncol(dane) # 21 kolumn.
@@ -60,7 +61,7 @@ dane[vars.to.cast] <- lapply(dane[vars.to.cast], as.factor)
 
 
 
-```{r missing values handling, include=FALSE}
+```{r missing values handling, include=FALSE, cache = TRUE}
 # Znajdź cechy, które zawierają (standardowo kodowane) wartości brakujące
 n.missing <- dane %>% 
   summarize(across(everything(), function(x) { sum(is.na(x)) } ) ) %>% 
@@ -78,28 +79,30 @@ Większość zmiennych są zmiennymi ilośćiowymi nieporządkowymi, określają
 
 
 ## Brakujące wartości.
-Ze wszystkich zmiennych dostępnych w ramce danych, jedynie zmienna *`r n.missing["variable"][1]`* zawiera brakujące wartości. Zawiera ich *`r n.missing["na.count"][1]`*. Wiersze, które nie przyjmują dla tej zmiennej żadnej wartości, zostaną porzucone.
+Ze wszystkich zmiennych dostępnych w ramce danych, jedynie zmienna *`r n.missing["variable"][1]`* zawiera brakujące wartości. Zawiera ich *`r n.missing["na.count"][1]`*.Dokonamy imputacji wartości tej zmiennej, opierając się na podejściu ze średnią.
 Wartości brakujące są kodowane standardowo, tj. jako *NA*. Nie znajdujemy w zbiorze danych niestandardowej reprezentacji wartośći brakujących.
 
 
 ## Okreslenie istotności zmiennych, eliminacja rendundancji danych.
 Naszym celem jest przewidzenie, czy dany klient zrezygnuje z usług firmy na podstawie dostępnych cech. W celu wyeliminowania redundancji danych, skasujemy te zmienne, które albo nie mają żadnego wpływu na decyzje klienta albo są funkcją pozostałych atrybutów.\
 Atrybut **customerID** z pewnością nie ma wpływu na zachowanie konsumenckie klienta, bowiem jest jedynie jego unikalnym identyfikatorem.\
-Racjonalne wydaje się również skasowanie kolumny **TotalCharges**. Zlicza ona całkowity koszt poniesiony przez klienta od początku zawarcia umowy z firmą. Tę wartość możemy bez straty informacji otworzyć, mnożąc ze sobą zmienne **tenure** oraz **MonthlyCharges** określające odpowiednio długość trwania umowy (wyrażona w miesiącach) i miesięczną taryfę za usługi.
 
 
-```{r dropping irrelevant variables, include=FALSE}
-dane <- dane %>%
-  drop_na(all_of(n.missing$variable)) %>% # Skasuj wiersze, które mają wartości brakujące dla zmiennych z n.missing$variable
-  mutate(across(all_of( c("customerID", "TotalCharges")), ~NULL)) # Skasuj redundantne kolumny
+```{r imputation, include=FALSE, cache = TRUE}
+# Obliczenie średniej dla TotalCharges, ignorując brakujące wartości
+mean_value <- mean(dane$TotalCharges, na.rm = TRUE)
+
+# Imputacja brakujących wartości średnią
+dane$TotalCharges[is.na(dane$TotalCharges)] <- mean_value
 
 ```
 
 
-# Etap 2. Analiza opisowa - wskaźniki sumaryczne i wykresy.
+# Etap 2. Analiza opisowa - wskaźniki sumaryczne i wykresy
 
-```{r selecting numeric columns, echo=FALSE}
-  num.cols <- names(dane %>% select( where(is.numeric))) # Znajdź kolumny numeryczne.
+## Podstawowe wskaźniki sumaryczne dla zmiennych ciągłych
+```{r selecting numeric columns, echo=FALSE, cache = TRUE}
+  num.cols <- names(dane %>% dplyr::select( where(is.numeric))) # Znajdź kolumny numeryczne.
 
 # Do poprawy - wyświetlanie liczb do 2 miejsc po przecinku. 
 # Pewnie samo summary jest lepsze, ale trzeba z nazw wskaźników zrobić nazwy wierszy.
@@ -115,10 +118,48 @@ summary.df <- t(data.frame(
 kable(summary.df, digits = 2, caption = "Wskaźniki sumaryczne dla zmiennych ciągłych",
       align = "lr")
 ```
+\newpage
+## Wykresy słupkowe dla zmiennych kategorycznych
+```{r echo=FALSE, fig.width = 9, fig.height = 6, cache = TRUE, fig.cap = "Rozkłady zmiennych kategorycznych"}
+wykres <- function(var){
+  
+  ggplot(dane, aes(x = !!sym(var), fill = !!sym(var))) + 
+  geom_bar() + 
+  ggtitle(paste("Rozkład zmiennej", var)) + theme(legend.title = element_blank())
+  
+}
+grid.arrange(wykres("gender"), wykres("PaymentMethod"),
+             wykres("InternetService"), wykres("OnlineSecurity"))
+```
+
+
+```{r boxplots, echo=FALSE,fig.width = 9, fig.height = 6, cache = TRUE, fig.cap = "Wykresy pudełkowe zmiennych ciągłych"}
+boxplot_maker <- function(var){
+  ggplot(dane, aes(y = !!sym(var))) + geom_boxplot() + 
+  ggtitle( paste("Wykres pudełkowy dla", var))+
+  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank())}
 
 
 
+grid.arrange(boxplot_maker("tenure"), boxplot_maker("MonthlyCharges"),
+             ncol = 2)
 
+```
+```{r histograms, echo=FALSE,fig.width = 9, fig.height = 6, cache = TRUE, fig.cap = "Histogramy zmiennych ciągłych"}
+histogram_maker <- function(var, color){
+  var_sd <- sd(dane[[var]])
+  
+  width <- 3.5 * (n.row)^(-1/3)*var_sd
+  
+  
+  ggplot(dane, aes(x = !!sym(var))) + geom_histogram(binwidth = width, fill = color, color = "black") + 
+  ggtitle( paste("Histogram zmiennej", var))
+  }
 
+p1 <- histogram_maker("tenure", "magenta")
+p2 <- histogram_maker("MonthlyCharges", "cyan")
+p3 <- histogram_maker("TotalCharges", "lightgreen")
 
+grid.arrange(p1, p2 ,p3, ncol = 2)
 
+```
