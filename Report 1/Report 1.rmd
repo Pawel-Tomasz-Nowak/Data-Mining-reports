@@ -18,7 +18,7 @@ output:
 fontsize: 12pt 
 ---
 ```{r setup, include=FALSE, cache = TRUE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 knitr::opts_chunk$set(fig.pos = "H", out.extra = "", fig.align = "center")
 library(dplyr)
@@ -134,32 +134,65 @@ grid.arrange(wykres("gender"), wykres("PaymentMethod"),
 
 
 ```{r boxplots, echo=FALSE,fig.width = 9, fig.height = 6, cache = TRUE, fig.cap = "Wykresy pudełkowe zmiennych ciągłych"}
-boxplot_maker <- function(var){
-  ggplot(dane, aes(y = !!sym(var))) + geom_boxplot() + 
-  ggtitle( paste("Wykres pudełkowy dla", var))+
-  theme(axis.ticks.x = element_blank(), axis.text.x = element_blank())}
+ boxplot_maker <- function(var){
+   ggplot(dane, aes(y = !!sym(var))) + geom_boxplot() +
+   ggtitle( paste("Wykres pudełkowy dla", var))+
+   theme(axis.ticks.x = element_blank(), axis.text.x = element_blank())}
 
 
 
-grid.arrange(boxplot_maker("tenure"), boxplot_maker("MonthlyCharges"),
+ grid.arrange(boxplot_maker("tenure"), boxplot_maker("MonthlyCharges"),
+              boxplot_maker("TotalCharges"),
              ncol = 2)
 
 ```
+
+
+
 ```{r histograms, echo=FALSE,fig.width = 9, fig.height = 6, cache = TRUE, fig.cap = "Histogramy zmiennych ciągłych"}
-histogram_maker <- function(var, color){
-  var_sd <- sd(dane[[var]])
-  
+ histogram_maker <- function(var, color){
+   var_sd <- sd(dane[[var]])
+
   width <- 3.5 * (n.row)^(-1/3)*var_sd
-  
-  
-  ggplot(dane, aes(x = !!sym(var))) + geom_histogram(binwidth = width, fill = color, color = "black") + 
-  ggtitle( paste("Histogram zmiennej", var))
-  }
+
+
+   ggplot(dane, aes(x = !!sym(var))) + geom_histogram(binwidth = width, fill = color, color = "black") +
+   ggtitle( paste("Histogram zmiennej", var))
+   }
 
 p1 <- histogram_maker("tenure", "magenta")
 p2 <- histogram_maker("MonthlyCharges", "cyan")
 p3 <- histogram_maker("TotalCharges", "lightgreen")
 
-grid.arrange(p1, p2 ,p3, ncol = 2)
+grid.arrange(p1, p2,p3, ncol = 2)
 
 ```
+
+
+
+
+```{r feature relationships, echo=FALSE, fig.width = 9, fig.height = 6,fig.cap = "Wykresy rozrzutu wraz z krzywą regresji liniowej"}
+p1 <- ggplot(dane, aes(x = tenure, y = MonthlyCharges)) +
+  geom_point(color = "magenta") + 
+  geom_smooth(color = "black",method = "lm") +
+  ggtitle("Relacja tenure oraz MonthlyCharges")
+
+p2 <- ggplot(dane, aes(x = tenure, y = TotalCharges)) +
+ geom_point(color = "cyan") + 
+ geom_smooth(color = "black", method ="lm") +
+   ggtitle("Relacja tenure oraz TotalCharges")
+
+p3 <- ggplot(dane, aes(x = tenure*MonthlyCharges, y = TotalCharges)) + 
+  geom_point(color = "orange") + 
+  geom_smooth(color = "black",method ="lm") +
+  ggtitle("Relacja TotalCharges oraz tenure*MonthlyCharges")
+
+
+grid.arrange(p1, p2, p3, ncol = 2)
+```
+
+
+
+
+
+

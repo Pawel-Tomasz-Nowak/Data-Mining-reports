@@ -50,11 +50,11 @@ factors.vars <- names( select_if(dane, is.factor))
 # 
 # }
 
-# Znajdź zmienne numeryczne ciągłe.
-# num.vars <- names( select_if(dane, is.numeric))
-# 
-# 
-# ggplot(dane, aes(y = MonthlyCharges)) + geom_boxplot() + 
+#Znajdź zmienne numeryczne ciągłe.
+num.vars <- names( select_if(dane, is.numeric))
+
+
+# ggplot(dane, aes(y = MonthlyCharges)) + geom_boxplot() +
 #   ggtitle("Wykres pudełkowy dla MonthlyCharges")+
 #   theme(axis.ticks.x = element_blank(), axis.text.x = element_blank())
 # 
@@ -62,8 +62,26 @@ factors.vars <- names( select_if(dane, is.factor))
 # var <- "tenure"
 # sd_sample <- sd(as.vector(dane[var]))
 # 
-# 
-# 
+
+
+
+      
+p1 <- ggplot(dane, aes(x = tenure, y = MonthlyCharges)) + geom_point(color = "magenta") + geom_smooth(color = "black",
+                                                                                                      method = "lm")
+
+p2 <- ggplot(dane, aes(x = tenure, y = TotalCharges)) + geom_point(color = "cyan") + geom_smooth(color = "black", 
+                                                                                                 method ="lm")
+
+
+p3 <- ggplot(dane, aes(x = tenure*MonthlyCharges, y = TotalCharges)) + geom_point(color = "orange") + geom_smooth(color = "black", 
+                                                                                                                  method ="lm")
+
+print(p1)
+print(p2)
+print(p3)
+print(p4)
+
+
 
 
 
