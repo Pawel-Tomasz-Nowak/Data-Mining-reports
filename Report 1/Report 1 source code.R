@@ -40,15 +40,15 @@ dane$TotalCharges[is.na(dane$TotalCharges)] <- mean_value
 # Wydobywanie zmiennych typu 'factor'
 factors.vars <- names( select_if(dane, is.factor))
 
-# 
-# for (var in factors.vars){
-# 
-#   p <- ggplot(dane, aes(x = !!sym(var), fill = !!sym(var))) + geom_bar( ) +
-#     ggtitle(paste("Wykres słupkowy", var))
-# 
-#   print(p)
-# 
-# }
+
+for (var in factors.vars){
+
+  p <- ggplot(dane, aes(x = !!sym(var), fill = !!sym(var))) + geom_bar( ) +
+    ggtitle(paste("Wykres słupkowy", var))
+
+  print(p)
+
+}
 
 #Znajdź zmienne numeryczne ciągłe.
 num.vars <- names( select_if(dane, is.numeric))
@@ -65,21 +65,21 @@ num.vars <- names( select_if(dane, is.numeric))
 
 
 
-      
-p1 <- ggplot(dane, aes(x = tenure, y = MonthlyCharges)) + geom_point(color = "magenta") + geom_smooth(color = "black",
-                                                                                                      method = "lm")
-
-p2 <- ggplot(dane, aes(x = tenure, y = TotalCharges)) + geom_point(color = "cyan") + geom_smooth(color = "black", 
-                                                                                                 method ="lm")
-
-
-p3 <- ggplot(dane, aes(x = tenure*MonthlyCharges, y = TotalCharges)) + geom_point(color = "orange") + geom_smooth(color = "black", 
-                                                                                                                  method ="lm")
-
-print(p1)
-print(p2)
-print(p3)
-print(p4)
+#       
+# p1 <- ggplot(dane, aes(x = tenure, y = MonthlyCharges)) + geom_point(color = "magenta") + geom_smooth(color = "black",
+#                                                                                                       method = "lm")
+# 
+# p2 <- ggplot(dane, aes(x = tenure, y = TotalCharges)) + geom_point(color = "cyan") + geom_smooth(color = "black", 
+#                                                                                                  method ="lm")
+# 
+# 
+# p3 <- ggplot(dane, aes(x = tenure*MonthlyCharges, y = TotalCharges)) + geom_point(color = "orange") + geom_smooth(color = "black", 
+#                                                                                                                   method ="lm")
+# 
+# print(p1)
+# print(p2)
+# print(p3)
+# print(p4)
 
 
 

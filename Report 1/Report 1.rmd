@@ -21,6 +21,10 @@ fontsize: 12pt
 knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 knitr::opts_chunk$set(fig.pos = "H", out.extra = "", fig.align = "center")
+
+```
+
+```{r importing librarries, warning=FALSE, include=FALSE}
 library(dplyr)
 library(tidyr)
 library(kableExtra)
@@ -28,7 +32,6 @@ library(knitr)
 library(ggplot2)
 library(gridExtra)
 ```
-
 
 
 # Etap 1. Przygotowanie danych. Podstawowe informacje o danych.
@@ -128,16 +131,20 @@ wykres <- function(var){
   ggtitle(paste("Rozkład zmiennej", var)) + theme(legend.title = element_blank())
   
 }
-grid.arrange(wykres("gender"), wykres("PaymentMethod"),
+
+grid.arrange(wykres("gender"), wykres("Contract"),
              wykres("InternetService"), wykres("OnlineSecurity"))
 ```
 
+(Piszę to, aby wykresy wyświetlały się w dobrej kolejności)
 
+## Wykresy pudełkowe dla zmiennych ilościowych
 ```{r boxplots, echo=FALSE,fig.width = 9, fig.height = 6, cache = TRUE, fig.cap = "Wykresy pudełkowe zmiennych ciągłych"}
  boxplot_maker <- function(var){
    ggplot(dane, aes(y = !!sym(var))) + geom_boxplot() +
    ggtitle( paste("Wykres pudełkowy dla", var))+
-   theme(axis.ticks.x = element_blank(), axis.text.x = element_blank())}
+   theme(axis.ticks.x = element_blank(), axis.text.x = element_blank())
+  }
 
 
 
@@ -147,9 +154,10 @@ grid.arrange(wykres("gender"), wykres("PaymentMethod"),
 
 ```
 
+(Piszę to, aby wykresy wyświetlały się w dobrej kolejności)
 
-
-```{r histograms, echo=FALSE,fig.width = 9, fig.height = 6, cache = TRUE, fig.cap = "Histogramy zmiennych ciągłych"}
+## Histogramy dla zmiennych ilościowych
+```{r histograms, echo=FALSE, fig.cap="Histogramy zmiennych ciągłych", fig.height=6, fig.width=9, cache=TRUE}
  histogram_maker <- function(var, color){
    var_sd <- sd(dane[[var]])
 
@@ -168,9 +176,9 @@ grid.arrange(p1, p2,p3, ncol = 2)
 
 ```
 
+(Piszę to, aby wykresy wyświetlały się w dobrej kolejności)
 
-
-
+## Wykresy rozrzutu wraz z krzywą regresji dla zmiennych ilościowych
 ```{r feature relationships, echo=FALSE, fig.width = 9, fig.height = 6,fig.cap = "Wykresy rozrzutu wraz z krzywą regresji liniowej"}
 p1 <- ggplot(dane, aes(x = tenure, y = MonthlyCharges)) +
   geom_point(color = "magenta") + 
@@ -191,8 +199,14 @@ p3 <- ggplot(dane, aes(x = tenure*MonthlyCharges, y = TotalCharges)) +
 grid.arrange(p1, p2, p3, ncol = 2)
 ```
 
+(Piszę to, aby wykresy wyświetlały się w dobrej kolejności). Czemu te wykresy pojawiają się w losowej kolejności?
+
+\newpage
+
+## Interpretacja wykresów.
+Przygladając się rozkładowi zmiennych jakościowych, możemy dojść do wielu ciekawych wniosków. Przede wszystkim rozkład płci klientów jest jednostajny. Sposród wszystkich typów kontraktu (miesięczny, roczny, dwuletni) zdecydowanie największą popularnością cieszy się kontrakt miesięczny. Klienci korzystający z usług internetowych najchętniej korzystają ze światłowodu, chociaż druga najczęstsza opcja (tj. DSL) ma również spore grono odbiorców.
+Największy niepokój budzi kompletny brak zainteresowania usługami z zakresu cyberbezpieczeństwa. Przeważająca większość konsumentów nie korzysta z tych rozwiązań mimo dostępu do łącza internetowego.
 
 
-
-
+ 
 
