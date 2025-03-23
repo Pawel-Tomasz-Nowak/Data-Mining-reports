@@ -28,7 +28,7 @@ n.missing <- dane %>%
   summarize(across(everything(), function(x) { sum(is.na(x)) } ) ) %>% 
   pivot_longer( everything(), names_to = "variable", values_to = "na.count" ) %>%
   filter( na.count > 0)
-
+# colSums(is.na(dane)) - ten sam efekt
              
 # Jest tylko jedna taka zmienna - "TotalCharges".
 # Obliczenie średniej dla TotalCharges, ignorując brakujące wartości
@@ -81,7 +81,29 @@ num.vars <- names( select_if(dane, is.numeric))
 # print(p3)
 # print(p4)
 
+# Etap 3
+# podział klientów na tych którzy odeszli i na tych którzy zostali
+dane.lojalni <- subset(dane, Churn=="No")
+dane.odeszli <- subset(dane, Churn=="Yes")
+
+wskazniki <- function(X)
+{
+  wynik <- c(min(X), quantile(X,0.25), median(X), mean(X), quantile(X,0.75), max(X), var(X), sd(X), IQR(X))
+  names(wynik) <- c("min", "Q1", "median", "mean", "Q3", "max", "var", "sd", "IQR")
+  return(wynik)
+}
 
 
+num.vars <- dane %>% select_if(is.numeric)
+wskazniki_grup <- aggregate(x=num.vars, by=list(grupa=dane$Churn), FUN=wskazniki)
+wskazniki_grup_t <- t(wskazniki_grup[,-1])  # Usunięcie kolumny 'grupa' i transpozycja wyniku
+colnames(wskazniki_grup_t) <- wskazniki_grup$grupa # Dodanie nazw kolumn
+print(wskazniki_grup_t)
 
+factors.vars <- dane %>% select_if(is.factor)
+for (var_name in names(factors.vars)) {
+  cat("Tabela dla zmiennej:", var_name, "\n")
+  print(table(dane$Churn, factors.vars[[var_name]]))
+  cat("\n")
+}
 
