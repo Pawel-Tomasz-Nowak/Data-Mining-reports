@@ -203,5 +203,28 @@ Największy niepokój budzi kompletny brak zainteresowania usługami z zakresu c
 Rozkłady zmiennych ciągłyhc wykazują różne ciekawe właściwości. Patrząc na wykres \ref{fig:histograms} obserwujemy rozkład U-modalny dla zmiennej tenure, który jest w przybliżeniu rozkładem symetrycznym. Z kolei zmienna **TotalCharges** wyróżnia się rozkładem prawostronie skośnym jednomodalnym. Najciekawszy rozkład wykazuje zmienna **MonthlyChargess**, który jest jednomodalny oraz prawostronnie skośny. W oczy rzuca się najwyższy słupek znajdujący się na lewo od środka histogramu. Największą zmiennością charakteryzuje się zmienna **TotalCharges**, której większość wartości kumuluje się wokół wartośći 0.
 
 
+# Etap 3. Analiza opisowa z podziałem na grupy
+
+```{r comparing table, echo=FALSE, fig.cap="Porównanie wskaźników sumarycznych dla grup klientów lojalnych i odchodzących na podstawie zmiennej TotalCharges"}
+library(kableExtra)
+
+wskazniki <- function(X)
+{
+  wynik <- c(min(X),quantile(X,0.25), median(X), mean(X), quantile(X,0.75), max(X), var(X),
+             sd(X), IQR(X))
+  names(wynik) <- c("min", "Q1", "median", "mean", "Q3", "max", "var", "sd", "IQR")
+  return(wynik)
+}
+
+wskazniki.dla.grup <- by(data=dane$TotalCharges, INDICES=dane$Churn, FUN=wskazniki)
+
+# tworzymy tabele ze wskaźnikami
+wskazniki <- wskazniki.dla.grup
+tabela    <- rbind(wskazniki$No, wskazniki$Yes) 
+row.names(tabela) <- c("lojalni", "nielojalni")
+tabela %>% 
+    kbl(digits=2, caption="Porównanie wskaźników sumarycznych dla grup klientów lojalnych i odchodzących na podstawie zmiennej TotalCharges") %>% 
+        kable_styling(latex_options = c("HOLD_position"))
+```
  
 
