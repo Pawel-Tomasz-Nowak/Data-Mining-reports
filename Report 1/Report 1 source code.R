@@ -88,22 +88,27 @@ dane.odeszli <- subset(dane, Churn=="Yes")
 
 wskazniki <- function(X)
 {
-  wynik <- c(min(X), quantile(X,0.25), median(X), mean(X), quantile(X,0.75), max(X), var(X), sd(X), IQR(X))
-  names(wynik) <- c("min", "Q1", "median", "mean", "Q3", "max", "var", "sd", "IQR")
+  wynik <- c(min(X), median(X), mean(X), max(X))
+  names(wynik) <- c("min", "median", "mean", "max")
   return(wynik)
 }
+
 
 
 num.vars <- dane %>% select_if(is.numeric)
 wskazniki_grup <- aggregate(x=num.vars, by=list(grupa=dane$Churn), FUN=wskazniki)
 wskazniki_grup_t <- t(wskazniki_grup[,-1])  # Usunięcie kolumny 'grupa' i transpozycja wyniku
-colnames(wskazniki_grup_t) <- wskazniki_grup$grupa # Dodanie nazw kolumn
+colnames(wskazniki_grup_t) <- c("Lojalni", "Odeszli") # Dodanie nazw kolumn
 print(wskazniki_grup_t)
 
-factors.vars <- dane %>% select_if(is.factor)
-for (var_name in names(factors.vars)) {
-  cat("Tabela dla zmiennej:", var_name, "\n")
-  print(table(dane$Churn, factors.vars[[var_name]]))
-  cat("\n")
-}
+# wykresy słupkowe jeszcze do wybrania
+factors.vars <- names(select_if(dane, is.factor))
+for (var in factors.vars){
+  
+  p <- ggplot(dane, aes(x = !!sym(var), fill = Churn)) + geom_bar( ) +
+    ggtitle(paste("Wykres słupkowy", var)) + 
+  
+  print(p)
+  
+} 
 
