@@ -19,8 +19,8 @@ fontsize: 12pt
 lof: true
 lot: true
 ---
-```{r setup, include=FALSE, cache = TRUE}
-knitr::opts_chunk$set(echo = TRUE, cache = TRUE)
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = FALSE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 knitr::opts_chunk$set(fig.pos = "H", out.extra ='', fig.align = "center")
 
@@ -38,14 +38,14 @@ library(gridExtra)
 
 # Etap 1. Przygotowanie danych. Podstawowe informacje o danych.
 
-```{r Read data and libraries, include=FALSE, cache = TRUE}
+```{r Read data and libraries, include=FALSE}
 # Wczytywanie ramki danych.
 dane <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv")
 
 
 ```
 
-```{r dtypes casting, counting rows and cols, include=FALSE, cache = TRUE}
+```{r dtypes casting, counting rows and cols, include=FALSE}
 # Ile jest wierszy, a ile - zmiennych?
 n.row <- nrow(dane) # 7043 wierszy.
 n.col <- ncol(dane) # 21 kolumn.
@@ -66,7 +66,7 @@ dane[vars.to.cast] <- lapply(dane[vars.to.cast], as.factor)
 
 
 
-```{r missing values handling, include=FALSE, cache = TRUE}
+```{r missing values handling, include=FALSE}
 # Znajdź cechy, które zawierają (standardowo kodowane) wartości brakujące
 n.missing <- dane %>% 
   summarize(across(everything(), function(x) { sum(is.na(x)) } ) ) %>% 
@@ -93,7 +93,7 @@ Naszym celem jest przewidzenie, czy dany klient zrezygnuje z usług firmy na pod
 Atrybut **customerID** z pewnością nie ma wpływu na zachowanie konsumenckie klienta, bowiem jest jedynie jego unikalnym identyfikatorem.\
 
 
-```{r imputation, include=FALSE, cache = TRUE}
+```{r imputation, include=FALSE}
 # Obliczenie średniej dla TotalCharges, ignorując brakujące wartości
 mean_value <- mean(dane$TotalCharges, na.rm = TRUE)
 
@@ -106,7 +106,7 @@ dane$TotalCharges[is.na(dane$TotalCharges)] <- mean_value
 # Etap 2. Analiza opisowa - wskaźniki sumaryczne i wykresy
 
 ## Podstawowe wskaźniki sumaryczne dla zmiennych ciągłych
-```{r selecting numeric columns, echo=FALSE, cache = TRUE}
+```{r selecting numeric columns, echo=FALSE}
   num.cols <- names(dane %>% dplyr::select( where(is.numeric))) # Znajdź kolumny numeryczne.
 
 # Do poprawy - wyświetlanie liczb do 2 miejsc po przecinku. 
@@ -125,7 +125,7 @@ kable(summary.df, digits = 2, caption = "Wskaźniki sumaryczne dla zmiennych ci�
 ```
 \newpage
 ## Wykresy słupkowe dla zmiennych kategorycznych
-```{r echo=FALSE, fig.width = 9, fig.height = 6, cache = TRUE, fig.cap = "Rozkłady zmiennych kategorycznych"}
+```{r echo=FALSE, fig.width = 9, fig.height = 6, fig.cap = "Rozkłady zmiennych kategorycznych"}
 wykres <- function(var){
   
   ggplot(dane, aes(x = !!sym(var), fill = !!sym(var))) + 
@@ -138,10 +138,9 @@ grid.arrange(wykres("gender"), wykres("Contract"),
              wykres("InternetService"), wykres("OnlineSecurity"))
 ```
 
-(Piszę to, aby wykresy wyświetlały się w dobrej kolejności)
 
 ## Wykresy pudełkowe dla zmiennych ilościowych
-```{r boxplots, echo=FALSE,fig.width = 9, fig.height = 6, cache = TRUE, fig.cap = "Wykresy pudełkowe zmiennych ciągłych"}
+```{r boxplots, echo=FALSE,fig.width = 9, fig.height = 6, fig.cap = "Wykresy pudełkowe zmiennych ciągłych"}
  boxplot_maker <- function(var){
    ggplot(dane, aes(y = !!sym(var))) + geom_boxplot() +
    ggtitle( paste("Wykres pudełkowy dla", var))+
@@ -156,10 +155,9 @@ grid.arrange(wykres("gender"), wykres("Contract"),
 
 ```
 
-(Piszę to, aby wykresy wyświetlały się w dobrej kolejności)
 
 ## Histogramy dla zmiennych ilościowych
-```{r histograms, echo=FALSE, fig.cap="Histogramy zmiennych ciągłych", fig.height=6, fig.width=9, cache=TRUE}
+```{r histograms, echo=FALSE, fig.cap="Histogramy zmiennych ciągłych", fig.height=6, fig.width=9}
  histogram_maker <- function(var, color){
    var_sd <- sd(dane[[var]])
 
@@ -178,7 +176,6 @@ grid.arrange(p1, p2,p3, ncol = 2)
 
 ```
 
-(Piszę to, aby wykresy wyświetlały się w dobrej kolejności)
 
 ## Wykresy rozrzutu wraz z krzywą regresji dla zmiennych ilościowych
 ```{r feature relationships, echo=FALSE, fig.width = 9, fig.height = 6,fig.cap = "Wykresy rozrzutu wraz z krzywą regresji liniowej"}
@@ -200,8 +197,6 @@ p3 <- ggplot(dane, aes(x = tenure*MonthlyCharges, y = TotalCharges)) +
 
 grid.arrange(p1, p2, p3, ncol = 2)
 ```
-
-(Piszę to, aby wykresy wyświetlały się w dobrej kolejności). Czemu te wykresy pojawiają się w losowej kolejności?
 
 \newpage
 
