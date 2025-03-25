@@ -11,7 +11,7 @@ header-includes:
 output: 
   pdf_document:
     toc: true
-    fig_caption: yes
+    fig_caption: true
     fig_width: 5 
     fig_height: 4 
     number_sections: true
@@ -102,7 +102,7 @@ dane$TotalCharges[is.na(dane$TotalCharges)] <- mean_value
 
 ```
 
-
+\newpage
 # Etap 2. Analiza opisowa - wskaźniki sumaryczne i wykresy
 
 ## Podstawowe wskaźniki sumaryczne dla zmiennych ciągłych
@@ -123,9 +123,8 @@ summary.df <- t(data.frame(
 kable(summary.df, digits = 2, caption = "Wskaźniki sumaryczne dla zmiennych ciągłych",
       align = "lr")
 ```
-\newpage
 ## Wykresy słupkowe dla zmiennych kategorycznych
-```{r echo=FALSE, fig.width = 9, fig.height = 6, fig.cap = "Rozkłady zmiennych kategorycznych"}
+```{r echo=FALSE, fig.width = 9, fig.height = 8, fig.cap = "Rozkłady zmiennych kategorycznych"}
 wykres <- function(var){
   
   ggplot(dane, aes(x = !!sym(var), fill = !!sym(var))) + 
@@ -140,7 +139,7 @@ grid.arrange(wykres("gender"), wykres("Contract"),
 
 
 ## Wykresy pudełkowe dla zmiennych ilościowych
-```{r boxplots, echo=FALSE,fig.width = 9, fig.height = 6, fig.cap = "Wykresy pudełkowe zmiennych ciągłych"}
+```{r boxplots, echo=FALSE,fig.width = 9, fig.height = 8, fig.cap = "Wykresy pudełkowe zmiennych ciągłych"}
  boxplot_maker <- function(var){
    ggplot(dane, aes(y = !!sym(var))) + geom_boxplot() +
    ggtitle( paste("Wykres pudełkowy dla", var))+
@@ -157,7 +156,7 @@ grid.arrange(wykres("gender"), wykres("Contract"),
 
 
 ## Histogramy dla zmiennych ilościowych
-```{r histograms, echo=FALSE, fig.cap="Histogramy zmiennych ciągłych", fig.height=6, fig.width=9}
+```{r histograms, echo=FALSE, fig.cap="Histogramy zmiennych ciągłych", fig.height=8, fig.width=9}
  histogram_maker <- function(var, color){
    var_sd <- sd(dane[[var]])
 
@@ -178,7 +177,7 @@ grid.arrange(p1, p2,p3, ncol = 2)
 
 
 ## Wykresy rozrzutu wraz z krzywą regresji dla zmiennych ilościowych
-```{r feature relationships, echo=FALSE, fig.width = 9, fig.height = 6,fig.cap = "Wykresy rozrzutu wraz z krzywą regresji liniowej"}
+```{r feature relationships, echo=FALSE, fig.width = 9, fig.height = 8,fig.cap = "Wykresy rozrzutu wraz z krzywą regresji liniowej"}
 p1 <- ggplot(dane, aes(x = tenure, y = MonthlyCharges)) +
   geom_point(color = "magenta") + 
   geom_smooth(color = "black",method = "lm") +
@@ -198,11 +197,10 @@ p3 <- ggplot(dane, aes(x = tenure*MonthlyCharges, y = TotalCharges)) +
 grid.arrange(p1, p2, p3, ncol = 2)
 ```
 
-\newpage
-
 ## Interpretacja wykresów.
 Przyglądając się rozkładowi zmiennych jakościowych, możemy dojść do wielu ciekawych wniosków. Przede wszystkim rozkład płci klientów jest jednostajny. Spośród wszystkich typów kontraktu (miesięczny, roczny, dwuletni) zdecydowanie największą popularnością cieszy się kontrakt miesięczny. Klienci korzystający z usług internetowych najchętniej korzystają ze światłowodu, chociaż druga najczęstsza opcja (tj. DSL) ma również spore grono odbiorców.
 Największy niepokój budzi kompletny brak zainteresowania usługami z zakresu cyberbezpieczeństwa. Przeważająca większość konsumentów nie korzysta z tych rozwiązań mimo dostępu do łącza internetowego.
+Rozkłady zmiennych ciągłyhc wykazują różne ciekawe właściwości. Patrząc na wykres \ref{fig:histograms} obserwujemy rozkład U-modalny dla zmiennej tenure, który jest w przybliżeniu rozkładem symetrycznym. Z kolei zmienna **TotalCharges** wyróżnia się rozkładem prawostronie skośnym jednomodalnym. Najciekawszy rozkład wykazuje zmienna **MonthlyChargess**, który jest jednomodalny oraz prawostronnie skośny. W oczy rzuca się najwyższy słupek znajdujący się na lewo od środka histogramu. Największą zmiennością charakteryzuje się zmienna **TotalCharges**, której większość wartości kumuluje się wokół wartośći 0.
 
 
  
