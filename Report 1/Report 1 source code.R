@@ -102,11 +102,13 @@ colnames(wskazniki_grup_t) <- c("Lojalni", "Odeszli") # Dodanie nazw kolumn
 print(wskazniki_grup_t)
 
 # wykresy słupkowe jeszcze do wybrania
-factors.vars <- names(select_if(dane, is.factor))
+dane1 <- dane %>%
+  mutate(Churn = factor(Churn, levels = c("No", "Yes"), labels = c("Loyal", "Disloyal")))
+
+factors.vars <- names(select_if(dane1, is.factor))
 for (var in factors.vars){
-  
-  p <- ggplot(dane, aes(x = !!sym(var), fill = Churn)) + geom_bar( ) +
-    ggtitle(paste("Wykres słupkowy", var)) + 
+  p <- ggplot(dane1, aes(x = !!sym(var), fill = Churn)) + geom_bar( ) +
+    ggtitle(paste("Wykres słupkowy", var)) 
   
   print(p)
   

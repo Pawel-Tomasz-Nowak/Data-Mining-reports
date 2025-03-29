@@ -200,13 +200,13 @@ grid.arrange(p1, p2, p3, ncol = 2)
 ## Interpretacja wykresów.
 Przyglądając się rozkładowi zmiennych jakościowych, możemy dojść do wielu ciekawych wniosków. Przede wszystkim rozkład płci klientów jest jednostajny. Spośród wszystkich typów kontraktu (miesięczny, roczny, dwuletni) zdecydowanie największą popularnością cieszy się kontrakt miesięczny. Klienci korzystający z usług internetowych najchętniej korzystają ze światłowodu, chociaż druga najczęstsza opcja (tj. DSL) ma również spore grono odbiorców.
 Największy niepokój budzi kompletny brak zainteresowania usługami z zakresu cyberbezpieczeństwa. Przeważająca większość konsumentów nie korzysta z tych rozwiązań mimo dostępu do łącza internetowego.
-Rozkłady zmiennych ciągłyhc wykazują różne ciekawe właściwości. Patrząc na wykres \ref{fig:histograms} obserwujemy rozkład U-modalny dla zmiennej tenure, który jest w przybliżeniu rozkładem symetrycznym. Z kolei zmienna **TotalCharges** wyróżnia się rozkładem prawostronie skośnym jednomodalnym. Najciekawszy rozkład wykazuje zmienna **MonthlyChargess**, który jest jednomodalny oraz prawostronnie skośny. W oczy rzuca się najwyższy słupek znajdujący się na lewo od środka histogramu. Największą zmiennością charakteryzuje się zmienna **TotalCharges**, której większość wartości kumuluje się wokół wartośći 0.
+Rozkłady zmiennych ciągłych wykazują różne ciekawe właściwości. Patrząc na wykres \ref{fig:histograms} obserwujemy rozkład U-modalny dla zmiennej tenure, który jest w przybliżeniu rozkładem symetrycznym. Z kolei zmienna **TotalCharges** wyróżnia się rozkładem prawostronnie skośnym jednomodalnym. Najciekawszy rozkład wykazuje zmienna **MonthlyChargess**, który jest jednomodalny oraz prawostronnie skośny. W oczy rzuca się najwyższy słupek znajdujący się na lewo od środka histogramu. Największą zmiennością charakteryzuje się zmienna **TotalCharges**, której większość wartości kumuluje się wokół wartości 0.
 
 
 # Etap 3. Analiza opisowa z podziałem na grupy
 
-```{r comparing table, echo=FALSE, fig.cap="Porównanie wskaźników sumarycznych dla grup klientów lojalnych i odchodzących na podstawie zmiennej TotalCharges"}
-library(kableExtra)
+## Podstawowe wskaźniki sumaryczne dla zmiennych ciągłych z podziałem na grupy klientów lojalnych i odchodzacych
+```{r table1, echo=FALSE, fig.cap="Porównanie wskaźników sumarycznych zmiennej TotalCharges dla grup klientów lojalnych i odchodzących"}
 
 wskazniki <- function(X)
 {
@@ -217,14 +217,98 @@ wskazniki <- function(X)
 }
 
 wskazniki.dla.grup <- by(data=dane$TotalCharges, INDICES=dane$Churn, FUN=wskazniki)
-
 # tworzymy tabele ze wskaźnikami
-wskazniki <- wskazniki.dla.grup
-tabela    <- rbind(wskazniki$No, wskazniki$Yes) 
+wskazniki.obl <- wskazniki.dla.grup
+tabela    <- rbind(wskazniki.obl$No, wskazniki.obl$Yes)
 row.names(tabela) <- c("lojalni", "nielojalni")
-tabela %>% 
-    kbl(digits=2, caption="Porównanie wskaźników sumarycznych dla grup klientów lojalnych i odchodzących na podstawie zmiennej TotalCharges") %>% 
-        kable_styling(latex_options = c("HOLD_position"))
-```
- 
+tabela %>%
+    kbl(digits=2, caption="Porównanie wskaźników sumarycznych dla grup klientów lojalnych i odchodzących na podstawie zmiennej TotalCharges") %>%
+        kable_styling(latex_options = c("HOLD_position")) 
 
+
+```
+
+```{r table2, echo=FALSE, fig.cap="Porównanie wskaźników sumarycznych zmiennej MonthlyCharges dla grup klientów lojalnych i odchodzących"}
+
+wskazniki <- function(X)
+{
+  wynik <- c(min(X),quantile(X,0.25), median(X), mean(X), quantile(X,0.75), max(X), var(X),
+             sd(X), IQR(X))
+  names(wynik) <- c("min", "Q1", "median", "mean", "Q3", "max", "var", "sd", "IQR")
+  return(wynik)
+}
+
+wskazniki.dla.grup <- by(data=dane$MonthlyCharges, INDICES=dane$Churn, FUN=wskazniki)
+# tworzymy tabele ze wskaźnikami
+wskazniki.obl <- wskazniki.dla.grup
+tabela    <- rbind(wskazniki.obl$No, wskazniki.obl$Yes)
+row.names(tabela) <- c("lojalni", "nielojalni")
+tabela %>%
+    kbl(digits=2, caption="Porównanie wskaźników sumarycznych dla grup klientów lojalnych i odchodzących na podstawie zmiennej MonthlyCharges") %>%
+        kable_styling(latex_options = c("HOLD_position"))
+
+
+```
+
+```{r table3, echo=FALSE, fig.cap="Porównanie wskaźników sumarycznych zmiennej tenure dla grup klientów lojalnych i odchodzących"}
+
+wskazniki <- function(X)
+{
+  wynik <- c(min(X),quantile(X,0.25), median(X), mean(X), quantile(X,0.75), max(X), var(X),
+             sd(X), IQR(X))
+  names(wynik) <- c("min", "Q1", "median", "mean", "Q3", "max", "var", "sd", "IQR")
+  return(wynik)
+}
+
+wskazniki.dla.grup <- by(data=dane$tenure, INDICES=dane$Churn, FUN=wskazniki)
+# tworzymy tabele ze wskaźnikami
+wskazniki.obl <- wskazniki.dla.grup
+tabela    <- rbind(wskazniki.obl$No, wskazniki.obl$Yes)
+row.names(tabela) <- c("lojalni", "nielojalni")
+tabela %>%
+    kbl(digits=2, caption="Porównanie wskaźników sumarycznych dla grup klientów lojalnych i odchodzących na podstawie zmiennej tenure") %>%
+        kable_styling(latex_options = c("HOLD_position"))
+
+
+```
+
+
+## Wykresy pudełkowe dla zmiennych ilościowych z podziałem na grupy klientów lojalnych i odchodzacych
+```{r gruped boxplots, echo=FALSE,fig.width = 9, fig.height = 8, fig.cap = "Wykresy pudełkowe zmiennych ciągłych z podziałem na grupy"}
+dane1 <- dane %>%
+  mutate(Churn = factor(Churn, levels = c("No", "Yes"), labels = c("Loyal", "Disloyal")))
+
+boxplot_maker <- function(var) {
+  ggplot(dane1, aes(x = Churn, y = !!sym(var), fill = Churn)) + 
+    geom_boxplot() +
+    ggtitle(paste("Wykres pudełkowy dla", var)) +
+    theme_minimal() +
+    theme(axis.title.x = element_blank(), legend.position = "none")
+}
+
+grid.arrange(
+  boxplot_maker("tenure"), boxplot_maker("MonthlyCharges"),
+  boxplot_maker("TotalCharges"),
+  ncol = 2
+)
+
+```
+## Wykresy słupkowe dla zmiennych kategorycznych z podziałem na grupy klientów lojalnych i odchodzacych
+```{r grouped barplots, echo=FALSE, fig.width = 9, fig.height = 10, fig.cap = "Rozkłady zmiennych kategorycznych z podziałem na klientów lojalnych i nielojalnych"}
+
+factors.vars <- names(select_if(dane1, is.factor))
+
+plot <- function(var){
+  
+   return(ggplot(dane1, aes(x = !!sym(var), fill = Churn)) + geom_bar( ) +
+    ggtitle(paste("Wykres słupkowy", var)) + theme(axis.text.x = element_text(angle = 20, hjust = 1)))
+  
+}
+
+grid.arrange(plot("SeniorCitizen"), plot("Contract"),
+             plot("PaymentMethod"), plot("InternetService"), plot("PaperlessBilling"), 
+             plot("TechSupport"))
+```
+
+## Analiza wyników
+Analizując wskaźniki sumaryczne dla zmiennych ciągłych (tabele ref) oraz interpretując wykresy pudełkowe (wykresy ref), można zauważyć, że najlepsze rozróżnienie między klientami, którzy nadal korzystają z usług firmy, a tymi, którzy zrezygnowali, zapewnia zmienna **tenure**, czyli liczba miesięcy, przez które klient pozostawał w firmie. To właśnie w tej zmiennej występuje największa różnica między medianami dla obu grup – lojalnych i nielojalnych klientów. Warto również zwrócić uwagę na pozostałe dwie zmienne, **MonthlyCharges** oraz **TotalCharges**. Klienci, którzy zrezygnowali z usług, ponosili średnio wyższe miesięczne opłaty niż ci, którzy pozostali. W przypadku rozkładu zmiennej **TotalCharges** warto zauważyć, że choć średnia wartość całkowitych wydatków klientów nielojalnych jest mniejsza, to próbki odstające w tej grupie znacznie przewyższają koszty ponoszone przez klientów lojalnych. 
