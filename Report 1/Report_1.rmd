@@ -82,18 +82,16 @@ Większość zmiennych są zmiennymi ilościowymi nieporządkowymi, określając
 
 
 ## Brakujące wartości
-Ze wszystkich zmiennych dostępnych w ramce danych, jedynie zmienna *`r n.missing["variable"][1]`* zawiera brakujące wartości. Zawiera ich *`r n.missing["na.count"][1]`*. Dokonamy imputacji wartości tej zmiennej, opierając się na podejściu ze średnią.
-Wartości brakujące są kodowane standardowo, tj. jako *NA*. Nie znajdujemy w zbiorze danych niestandardowej reprezentacji wartości brakujących.
+Wśród wszystkich zmiennych jedynie r n.missing["variable"][1] zawiera brakujące wartości, których liczba wynosi r n.missing["na.count"][1]. Aby zapewnić spójność danych, zastosujemy imputację tych braków, uzupełniając je średnią wartością. Brakujące dane są standardowo oznaczone jako NA, a w zbiorze nie występują niestandardowe reprezentacje braków.
 
 
-## Określenie istotności zmiennych, eliminacja rendundancji danych
-Naszym celem jest przewidzenie, czy dany klient zrezygnuje z usług firmy na podstawie dostępnych cech. W celu wyeliminowania redundancji danych, skasujemy te zmienne, które albo nie mają żadnego wpływu na decyzje klienta albo są funkcją pozostałych atrybutów.\
-Atrybut **customerID** z pewnością nie ma wpływu na zachowanie konsumenckie klienta, bowiem jest jedynie jego unikalnym identyfikatorem.\
+## Istotność zmiennych i eliminacja redundancji
+Naszym celem jest przewidzenie, czy klient zrezygnuje z usług firmy na podstawie dostępnych cech. W tym celu usuniemy zmienne, które nie mają wpływu na decyzje konsumentów lub są funkcją innych zmiennych. Przykładowo, atrybut customerID jest unikalnym identyfikatorem klienta i nie niesie informacji istotnych dla analizy zachowań konsumenckich, dlatego zostanie wykluczony ze zbioru danych.
 
 
 ```{r imputation, include=FALSE}
 # Obliczenie średniej dla TotalCharges, ignorując brakujące wartości
-mean_value <- mean(dane$TotalCharges, na.rm = TRUE)
+mean_value <- mean(dane$TotalCharges, na.rm = TRUE) 
 
 # Imputacja brakujących wartości średnią
 dane$TotalCharges[is.na(dane$TotalCharges)] <- mean_value
@@ -106,8 +104,8 @@ dane$TotalCharges[is.na(dane$TotalCharges)] <- mean_value
 dane <- dane %>% mutate(Churn = factor(Churn, levels = c("No", "Yes"), 
                                        labels =c("Loyal","Disloyal")),
                         SeniorCitizen = factor(SeniorCitizen, levels = c(0, 1), labels = c("non-Senior", "Senior")), 
-                        PaperlessBilling = factor(PaperlessBilling, levels = c("No", "Yes"), labels = c("non-PaperlessBilling", "PaperlessBilling")))
-
+                        PaperlessBilling = factor(PaperlessBilling, levels = c("No", "Yes"), labels = c("non-PaperlessBilling", "PaperlessBilling")), 
+                        customerID = NULL)
 ```
 
 # Etap 2. Analiza opisowa - wskaźniki sumaryczne i wykresy
@@ -206,10 +204,10 @@ grid.arrange(p1, p2, p3, ncol = 2)
 ```
 
 ## Interpretacja wykresów.
-Przyglądając się [rozkładowi zmiennych jakościowych](#slupkowe), możemy dojść do wielu ciekawych wniosków. Przede wszystkim rozkład płci klientów jest jednostajny. Spośród wszystkich typów kontraktu (miesięczny, roczny, dwuletni) zdecydowanie największą popularnością cieszy się kontrakt miesięczny. Klienci korzystający z usług internetowych najchętniej korzystają ze światłowodu, chociaż druga najczęstsza opcja (tj. DSL) ma również spore grono odbiorców.
-Największy niepokój budzi kompletny brak zainteresowania usługami z zakresu cyberbezpieczeństwa. Przeważająca większość konsumentów nie korzysta z tych rozwiązań mimo dostępu do łącza internetowego.
-Rozkłady zmiennych ciągłych wykazują różne ciekawe właściwości. Patrząc na wykres \ref{fig:histograms} obserwujemy rozkład U-modalny dla zmiennej **tenure**, który jest w przybliżeniu rozkładem symetrycznym. Z kolei zmienna **TotalCharges** wyróżnia się rozkładem prawostronnie skośnym jednomodalnym. Najciekawszy rozkład wykazuje zmienna **MonthlyCharges**, który jest jednomodalny oraz prawostronnie skośny. W oczy rzuca się najwyższy słupek znajdujący się na lewo od środka histogramu. Największą zmiennością charakteryzuje się zmienna **TotalCharges**, której większość wartości kumuluje się wokół wartości 0.
-
+Analizując rozkład zmiennych jakościowych, można dostrzec kilka interesujących zależności. Przede wszystkim liczba klientów obu płci jest niemal identyczna, co wskazuje na równomierny podział wśród użytkowników. Wśród dostępnych typów kontraktu zdecydowanie najczęściej wybierany jest wariant miesięczny, wyraźnie dominując nad umowami rocznymi i dwuletnimi. Jeśli chodzi o rodzaj połączenia internetowego, najwięcej klientów korzysta ze światłowodu, choć technologia DSL również cieszy się sporą popularnością.\
+Niepokojącym zjawiskiem jest natomiast niemal całkowity brak zainteresowania usługami cyberbezpieczeństwa. Mimo posiadania dostępu do internetu, większość użytkowników nie decyduje się na skorzystanie z tych rozwiązań.\
+Przechodząc do rozkładów zmiennych ciągłych, wykres \ref{fig:histograms} ujawnia kilka ciekawych właściwości. Zmienna tenure charakteryzuje się rozkładem U-modalnym, który jest w przybliżeniu symetryczny. TotalCharges wyróżnia się natomiast rozkładem jednomodalnym o wyraźnej skośności prawostronnej. Najbardziej interesujący wydaje się rozkład MonthlyCharges, który łączy w sobie wcześniej wspomniane cechy. Szczególnie rzuca się w oczy najwyższy słupek po lewej stronie histogramu. Spośród analizowanych cech, największą zmienność wykazuje TotalCharges, przy czym większość jej wartości koncentruje się blisko zera.\
+Analizując zmienne ciągłe pod kątem zależności liniowych, zauważamy, że współczynnik korelacji między tenure a MonthlyCharges jest bliski zeru, co sugeruje brak istotnej zależności liniowej między tymi cechami. Podobny wniosek można wysnuć z wykresu rozrzutu tych zmiennych, choć przy nieco wyższym współczynniku korelacji. Najsilniejszą zależność liniową obserwujemy natomiast między TotalCharges a iloczynem tenure i MonthlyCharges, który stanowi ich interakcję. W tym przypadku regresja liniowa doskonale odwzorowuje zależność w danych, co potwierdza dobre dopasowanie modelu do obserwacji.
 
 # Etap 3. Analiza opisowa z podziałem na grupy
 
