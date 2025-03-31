@@ -36,7 +36,7 @@ library(gridExtra)
 ```
 
 
-# Etap 1. Przygotowanie danych. Podstawowe informacje o danych.
+# Etap 1. Przygotowanie danych. Podstawowe informacje o danych
 
 ```{r Read data and libraries, include=FALSE}
 # Wczytywanie ramki danych.
@@ -84,7 +84,7 @@ Większość zmiennych są zmiennymi ilościowymi nieporządkowymi, określając
 
 
 ## Brakujące wartości.
-Ze wszystkich zmiennych dostępnych w ramce danych, jedynie zmienna *`r n.missing["variable"][1]`* zawiera brakujące wartości. Zawiera ich *`r n.missing["na.count"][1]`*.Dokonamy imputacji wartości tej zmiennej, opierając się na podejściu ze średnią.
+Ze wszystkich zmiennych dostępnych w ramce danych, jedynie zmienna *`r n.missing["variable"][1]`* zawiera brakujące wartości. Zawiera ich *`r n.missing["na.count"][1]`*. Dokonamy imputacji wartości tej zmiennej, opierając się na podejściu ze średnią.
 Wartości brakujące są kodowane standardowo, tj. jako *NA*. Nie znajdujemy w zbiorze danych niestandardowej reprezentacji wartości brakujących.
 
 
@@ -102,7 +102,13 @@ dane$TotalCharges[is.na(dane$TotalCharges)] <- mean_value
 
 ```
 
-\newpage
+
+```{r re-labeling, include = FALSE}
+dane <- mutate(dane, Churn = factor(Churn, levels = c("No", "Yes"), labels = c("Loyal", "Disloyal")))
+
+# Pozostałe zmienne kategoryczne też do etykietowania.
+```
+
 # Etap 2. Analiza opisowa - wskaźniki sumaryczne i wykresy
 
 ## Podstawowe wskaźniki sumaryczne dla zmiennych ciągłych
@@ -123,18 +129,19 @@ summary.df <- t(data.frame(
 kable(summary.df, digits = 2, caption = "Wskaźniki sumaryczne dla zmiennych ciągłych",
       align = "lr")
 ```
-## Wykresy słupkowe dla zmiennych kategorycznych
-```{r echo=FALSE, fig.width = 9, fig.height = 8, fig.cap = "Rozkłady zmiennych kategorycznych"}
+## Wykresy słupkowe dla wybranych zmiennych kategorycznych
+```{r echo=FALSE, fig.width = 9, fig.height = 10, fig.cap = "Rozkłady wybranych zmiennych kategorycznych"}
 wykres <- function(var){
   
   ggplot(dane, aes(x = !!sym(var), fill = !!sym(var))) + 
   geom_bar() + 
-  ggtitle(paste("Rozkład zmiennej", var)) + theme(legend.title = element_blank())
+  ggtitle(paste("Rozkład zmiennej", var)) + theme(legend.title = element_blank()) + theme(axis.text.x = element_text(angle = 20, hjust = 1))
   
 }
 
 grid.arrange(wykres("gender"), wykres("Contract"),
-             wykres("InternetService"), wykres("OnlineSecurity"))
+             wykres("InternetService"), wykres("OnlineSecurity"),
+             wykres("Churn"),wykres("SeniorCitizen"))
 ```
 
 
@@ -200,8 +207,112 @@ grid.arrange(p1, p2, p3, ncol = 2)
 ## Interpretacja wykresów.
 Przyglądając się rozkładowi zmiennych jakościowych, możemy dojść do wielu ciekawych wniosków. Przede wszystkim rozkład płci klientów jest jednostajny. Spośród wszystkich typów kontraktu (miesięczny, roczny, dwuletni) zdecydowanie największą popularnością cieszy się kontrakt miesięczny. Klienci korzystający z usług internetowych najchętniej korzystają ze światłowodu, chociaż druga najczęstsza opcja (tj. DSL) ma również spore grono odbiorców.
 Największy niepokój budzi kompletny brak zainteresowania usługami z zakresu cyberbezpieczeństwa. Przeważająca większość konsumentów nie korzysta z tych rozwiązań mimo dostępu do łącza internetowego.
-Rozkłady zmiennych ciągłyhc wykazują różne ciekawe właściwości. Patrząc na wykres \ref{fig:histograms} obserwujemy rozkład U-modalny dla zmiennej tenure, który jest w przybliżeniu rozkładem symetrycznym. Z kolei zmienna **TotalCharges** wyróżnia się rozkładem prawostronie skośnym jednomodalnym. Najciekawszy rozkład wykazuje zmienna **MonthlyChargess**, który jest jednomodalny oraz prawostronnie skośny. W oczy rzuca się najwyższy słupek znajdujący się na lewo od środka histogramu. Największą zmiennością charakteryzuje się zmienna **TotalCharges**, której większość wartości kumuluje się wokół wartośći 0.
+Rozkłady zmiennych ciągłych wykazują różne ciekawe właściwości. Patrząc na wykres \ref{fig:histograms} obserwujemy rozkład U-modalny dla zmiennej tenure, który jest w przybliżeniu rozkładem symetrycznym. Z kolei zmienna **TotalCharges** wyróżnia się rozkładem prawostronnie skośnym jednomodalnym. Najciekawszy rozkład wykazuje zmienna **MonthlyChargess**, który jest jednomodalny oraz prawostronnie skośny. W oczy rzuca się najwyższy słupek znajdujący się na lewo od środka histogramu. Największą zmiennością charakteryzuje się zmienna **TotalCharges**, której większość wartości kumuluje się wokół wartości 0.
 
 
- 
+# Etap 3. Analiza opisowa z podziałem na grupy
 
+## Podstawowe wskaźniki sumaryczne dla zmiennych ciągłych z podziałem na grupy klientów lojalnych i odchodzacych {#sum_tables}
+```{r sum_table1, echo=FALSE, fig.cap="Porównanie wskaźników sumarycznych zmiennej TotalCharges dla grup klientów lojalnych i odchodzących"}
+
+wskazniki <- function(X)
+{
+  wynik <- c(min(X),quantile(X,0.25), median(X), mean(X), quantile(X,0.75), max(X),sd(X), IQR(X))
+  names(wynik) <- c("min", "Q1", "median", "mean", "Q3", "max", "sd", "IQR")
+  return(wynik)
+}
+
+wskazniki.dla.grup <- by(data=dane$TotalCharges, INDICES=dane$Churn, FUN=wskazniki)
+# tworzymy tabele ze wskaźnikami
+wskazniki.obl <- wskazniki.dla.grup
+tabela    <- rbind(wskazniki.obl$Loyal, wskazniki.obl$Disloyal)
+
+row.names(tabela) <- c("lojalni", "nielojalni")
+tabela %>%
+    kbl(digits=2, caption="Porównanie wskaźników sumarycznych dla grup klientów lojalnych i odchodzących na podstawie zmiennej TotalCharges") %>%
+        kable_styling(latex_options = c("HOLD_position"))
+
+
+```
+
+```{r sum_table2, echo=FALSE, fig.cap="Porównanie wskaźników sumarycznych zmiennej MonthlyCharges dla grup klientów lojalnych i odchodzących"}
+
+
+wskazniki.dla.grup <- by(data=dane$MonthlyCharges, INDICES=dane$Churn, FUN=wskazniki)
+# tworzymy tabele ze wskaźnikami
+wskazniki.obl <- wskazniki.dla.grup
+tabela    <- rbind(wskazniki.obl$Loyal, wskazniki.obl$Disloyal)
+row.names(tabela) <- c("lojalni", "nielojalni")
+
+tabela %>%
+    kbl(digits=2, caption="Porównanie wskaźników sumarycznych dla grup klientów lojalnych i odchodzących na podstawie zmiennej MonthlyCharges") %>%
+        kable_styling(latex_options = c("HOLD_position"))
+
+
+```
+
+```{r sum_table3, echo=FALSE, fig.cap="Porównanie wskaźników sumarycznych zmiennej tenure dla grup klientów lojalnych i odchodzących"}
+
+wskazniki.dla.grup <- by(data=dane$tenure, INDICES=dane$Churn, FUN=wskazniki)
+# tworzymy tabele ze wskaźnikami
+wskazniki.obl <- wskazniki.dla.grup
+tabela    <- rbind(wskazniki.obl$Loyal, wskazniki.obl$Disloyal)
+row.names(tabela) <- c("lojalni", "nielojalni")
+tabela %>%
+    kbl(digits=2, caption="Porównanie wskaźników sumarycznych dla grup klientów lojalnych i odchodzących na podstawie zmiennej tenure") %>%
+        kable_styling(latex_options = c("HOLD_position"))
+
+
+```
+
+
+## Wykresy pudełkowe dla zmiennych ilościowych z podziałem na grupy klientów lojalnych i odchodzacych {#grouped_boxplots}
+```{r grouped boxplots, echo=FALSE,fig.width = 9, fig.height = 8, fig.cap = "Wykresy pudełkowe zmiennych ciągłych z podziałem na grupy"}
+
+boxplot_maker <- function(var) {
+  ggplot(dane, aes(x = Churn, y = !!sym(var), fill = Churn)) + 
+    geom_boxplot() +
+    ggtitle(paste("Wykres pudełkowy dla", var)) +
+    theme_minimal() +
+    theme(axis.title.x = element_blank(), legend.position = "none")
+}
+
+grid.arrange(
+  boxplot_maker("tenure"), boxplot_maker("MonthlyCharges"),
+  boxplot_maker("TotalCharges"),
+  ncol = 2
+)
+
+```
+## Wykresy słupkowe dla wybranych zmiennych kategorycznych z podziałem na grupy klientów lojalnych i odchodzacych {#grouped_barplots}
+```{r grouped barplots, echo=FALSE, fig.width = 9, fig.height = 10, fig.cap = "Rozkłady wybranych zmiennych kategorycznych z podziałem na klientów lojalnych i nielojalnych"}
+
+factors.vars <- names(select_if(dane, is.factor))
+
+plot <- function(var){
+  
+   return(ggplot(dane, aes(x = !!sym(var), fill = Churn)) + geom_bar( ) +
+    ggtitle(paste("Wykres słupkowy", var)) + theme(axis.text.x = element_text(angle = 20, hjust = 1)))
+  
+}
+
+grid.arrange(plot("Contract"),
+             plot("PaymentMethod"), plot("InternetService"), plot("PaperlessBilling"), 
+             plot("TechSupport"))
+```
+
+## Analiza wyników
+Analizując [wskaźniki sumaryczne](#sum_tables) dla zmiennych ciągłych oraz interpretując wykresy pudełkowe przedstawione na [rysunku](#grouped_boxplots), można zauważyć, że najlepsze rozróżnienie między klientami, którzy nadal korzystają z usług firmy, a tymi, którzy zrezygnowali, zapewnia zmienna **tenure**, czyli liczba miesięcy, przez które klient korzystał z usług firmy. To właśnie w tej zmiennej występuje największa różnica między medianami dla obu grup – lojalnych i nielojalnych klientów. Warto również zwrócić uwagę na pozostałe dwie zmienne, **MonthlyCharges** oraz **TotalCharges**. Klienci, którzy zrezygnowali z usług, ponosili średnio wyższe miesięczne opłaty niż ci, którzy pozostali. \
+W przypadku rozkładu zmiennej **TotalCharges** warto zauważyć, że choć średnia wartość całkowitych wydatków klientów nielojalnych jest mniejsza, to próbki odstające w tej grupie znacznie przewyższają koszty ponoszone przez klientów lojalnych. \
+Przyjrzyjmy się teraz  [wykresom słupkowym](#grouped_barplots). Jeżeli podzielimy klientów ze względu na typ umowy, którą zawarli z firmą, stanie się jasne, że największy odsetek klientów odchodzących występuje w grupie osób podlegających miesięcznemu typowi umowy.\
+Analizując inne cechy, obserwujemy, że największą grupę klientów odchodzących z firmy stanowią osoby, które swoje usługi opłacają, korzystając z czeku elektronicznego; zdecydowały się na kupno swiatłowodu; dostają elektroniczny rachunek za wybrane usługi, lub które nie wybrały usługi wsparcia technicznego.
+
+# Etap 4. Podsumowanie – wnioski z przeprowadzonej analizy
+## Charakterystyka klientów firmy.
+Nasza baza klientów cechuje się równomiernym podziałem pod względem płci – kobiety i mężczyźni są reprezentowani w jednakowych proporcjach. Wśród dostępnych opcji umownych największym zainteresowaniem cieszy się umowa miesięczna. Jeśli chodzi o internet, niezaprzeczalnie dominuje światłowód.\
+Pod względem wieku przeważają osoby młode, choć starsi użytkownicy również chętnie korzystają z oferty. Natomiast rozwiązania z zakresu cyberbezpieczeństwa nie wzbudzają dużego zainteresowania. Zauważamy również pewien poziom rezygnacji, jednak większość klientów pozostaje z nami na dłużej.
+
+## Dlaczego klienci rezygnują z oferty Telco
+Rezygnacja z usług firmy jest ściśle powiązana z typem zawartego kontraktu. Klienci posiadający umowę miesięczną częściej decydują się na odejście. Jest to w pełni zrozumiałe – krótkoterminowe zobowiązania ułatwiają rozwiązanie umowy, co sprawia, że decyzja o rezygnacji jest prostsza do podjęcia. Zadowoleni klienci chętniej wybierają długoterminowe kontrakty, co znacząco zmniejsza prawdopodobieństwo ich rezygnacji w przyszłości. \
+Aby zwiększyć lojalność klientów, firma powinna skupić się na promowaniu wsparcia technicznego (TechSupport). Problemy z działaniem produktów często prowadzą do frustracji, dlatego szybka i skuteczna pomoc w ich naprawie może znacząco poprawić satysfakcję użytkowników i zmniejszyć liczbę rezygnacji. \
+Wprowadzenie zniżek dla stałych klientów mogłoby znacząco podnieść poziom ich zadowolenia. Jak wynika [z wykresu](#grouped_boxplots), lojalni użytkownicy ponoszą znacznie niższe miesięczne koszty w porównaniu do osób rezygnujących, co sugeruje, że atrakcyjna polityka cenowa sprzyja długoterminowej współpracy
