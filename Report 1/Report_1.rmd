@@ -50,7 +50,7 @@ dane <- read.csv("WA_Fn-UseC_-Telco-Customer-Churn.csv")
 n.row <- nrow(dane) # 7043 wierszy.
 n.col <- ncol(dane) # 21 kolumn.
 str(dane) # sprawdzenie typów danych
-# Dane zawierają sporo zmiennych jakościowych nieporzadkowych, które zostały błędnie wczytane jako zmienne typu napis. 
+# Dane zawierają sporo zmiennych jakościowych nieporządkowych, które zostały błędnie wczytane jako zmienne typu napis. 
 vars.to.cast <- c("gender", "SeniorCitizen", "Partner", "Dependents", "PhoneService", "MultipleLines",
                   "InternetService", "OnlineSecurity", "OnlineBackup", "DeviceProtection",
                   "TechSupport", "StreamingTV", "StreamingMovies", "Contract", "PaperlessBilling",
@@ -82,11 +82,11 @@ Większość zmiennych są zmiennymi ilościowymi nieporządkowymi, określając
 
 
 ## Brakujące wartości
-Wśród wszystkich zmiennych jedynie r n.missing["variable"][1] zawiera brakujące wartości, których liczba wynosi r n.missing["na.count"][1]. Aby zapewnić spójność danych, zastosujemy imputację tych braków, uzupełniając je średnią wartością. Brakujące dane są standardowo oznaczone jako NA, a w zbiorze nie występują niestandardowe reprezentacje braków.
+Wśród wszystkich zmiennych jedynie `r n.missing["variable"][1]` zawiera brakujące wartości, których liczba wynosi `r n.missing["na.count"][1]`. Aby zapewnić spójność danych, zastosujemy imputację tych braków, uzupełniając je średnią wartością. Brakujące dane są standardowo oznaczone jako NA, a w zbiorze nie występują niestandardowe reprezentacje braków.
 
 
 ## Istotność zmiennych i eliminacja redundancji
-Naszym celem jest przewidzenie, czy klient zrezygnuje z usług firmy na podstawie dostępnych cech. W tym celu usuniemy zmienne, które nie mają wpływu na decyzje konsumentów lub są funkcją innych zmiennych. Przykładowo, atrybut customerID jest unikalnym identyfikatorem klienta i nie niesie informacji istotnych dla analizy zachowań konsumenckich, dlatego zostanie wykluczony ze zbioru danych.
+Naszym celem jest przewidzenie, czy klient zrezygnuje z usług firmy na podstawie dostępnych cech. W tym celu usuniemy zmienne, które nie mają wpływu na decyzje konsumentów lub są funkcją innych zmiennych. Przykładowo, atrybut **customerID** jest unikalnym identyfikatorem klienta i nie niesie informacji istotnych dla analizy zachowań konsumenckich, dlatego zostanie wykluczony ze zbioru danych.
 
 
 ```{r imputation, include=FALSE}
@@ -100,7 +100,7 @@ dane$TotalCharges[is.na(dane$TotalCharges)] <- mean_value
 
 
 ```{r re-labeling, include = FALSE}
-# zmiana wartości niektóych zmiennych typu factor, aby były bardziej czytelne na wykresach
+# zmiana wartości wybranych zmiennych typu factor, aby były bardziej czytelne na wykresach
 dane <- dane %>% mutate(Churn = factor(Churn, levels = c("No", "Yes"), 
                                        labels =c("Loyal","Disloyal")),
                         SeniorCitizen = factor(SeniorCitizen, levels = c(0, 1), labels = c("non-Senior", "Senior")), 
@@ -164,7 +164,7 @@ grid.arrange(wykres("gender"), wykres("Contract"),
 
 ## Histogramy dla zmiennych ilościowych
 ```{r histograms, echo=FALSE, fig.cap="Histogramy zmiennych ciągłych", fig.height=8, fig.width=9}
-# Funkcja generująca histogramy dla zmiennych ciągłych
+# Funkcja generująca histogramy dla zmiennych 
 histogram_maker <- function(var, color){
     var_sd <- sd(dane[[var]])
     width <- 3.5 * (n.row)^(-1/3)*var_sd
@@ -182,7 +182,7 @@ grid.arrange(p1, p2,p3, ncol = 2)
 ```
 
 
-## Wykresy rozrzutu wraz z krzywą regresji dla zmiennych ilościowych
+## Wykresy rozrzutu wraz z krzywą regresji dla zmiennych ilościowych {#wykresy_rozrzutu}
 ```{r feature relationships, echo=FALSE, fig.width = 9, fig.height = 8,fig.cap = "Wykresy rozrzutu wraz z krzywą regresji liniowej"}
 p1 <- ggplot(dane, aes(x = tenure, y = MonthlyCharges)) +
   geom_point(color = "magenta") + 
@@ -203,17 +203,18 @@ p3 <- ggplot(dane, aes(x = tenure*MonthlyCharges, y = TotalCharges)) +
 grid.arrange(p1, p2, p3, ncol = 2)
 ```
 
-## Interpretacja wykresów.
-Analizując rozkład zmiennych jakościowych, można dostrzec kilka interesujących zależności. Przede wszystkim liczba klientów obu płci jest niemal identyczna, co wskazuje na równomierny podział wśród użytkowników. Wśród dostępnych typów kontraktu zdecydowanie najczęściej wybierany jest wariant miesięczny, wyraźnie dominując nad umowami rocznymi i dwuletnimi. Jeśli chodzi o rodzaj połączenia internetowego, najwięcej klientów korzysta ze światłowodu, choć technologia DSL również cieszy się sporą popularnością.\
-Niepokojącym zjawiskiem jest natomiast niemal całkowity brak zainteresowania usługami cyberbezpieczeństwa. Mimo posiadania dostępu do internetu, większość użytkowników nie decyduje się na skorzystanie z tych rozwiązań.\
-Przechodząc do rozkładów zmiennych ciągłych, wykres \ref{fig:histograms} ujawnia kilka ciekawych właściwości. Zmienna tenure charakteryzuje się rozkładem U-modalnym, który jest w przybliżeniu symetryczny. TotalCharges wyróżnia się natomiast rozkładem jednomodalnym o wyraźnej skośności prawostronnej. Najbardziej interesujący wydaje się rozkład MonthlyCharges, który łączy w sobie wcześniej wspomniane cechy. Szczególnie rzuca się w oczy najwyższy słupek po lewej stronie histogramu. Spośród analizowanych cech, największą zmienność wykazuje TotalCharges, przy czym większość jej wartości koncentruje się blisko zera.\
-Analizując zmienne ciągłe pod kątem zależności liniowych, zauważamy, że współczynnik korelacji między tenure a MonthlyCharges jest bliski zeru, co sugeruje brak istotnej zależności liniowej między tymi cechami. Podobny wniosek można wysnuć z wykresu rozrzutu tych zmiennych, choć przy nieco wyższym współczynniku korelacji. Najsilniejszą zależność liniową obserwujemy natomiast między TotalCharges a iloczynem tenure i MonthlyCharges, który stanowi ich interakcję. W tym przypadku regresja liniowa doskonale odwzorowuje zależność w danych, co potwierdza dobre dopasowanie modelu do obserwacji.
+## Interpretacja wykresów
+Analizując rozkład zmiennych jakościowych na [wykresach słupkowych](#slupkowe), można dostrzec kilka interesujących zależności. Przede wszystkim liczba klientów obu płci jest niemal identyczna, co wskazuje na równomierny podział wśród użytkowników. Wśród dostępnych typów kontraktu zdecydowanie najczęściej wybierany jest wariant miesięczny, wyraźnie dominując nad umowami rocznymi i dwuletnimi. Jeśli chodzi o rodzaj połączenia internetowego, najwięcej klientów korzysta ze światłowodu, choć technologia DSL również cieszy się sporą popularnością.\
+Niepokojącym zjawiskiem jest natomiast niskie zainteresowanie usługami cyberbezpieczeństwa. Mimo posiadania dostępu do internetu, większość użytkowników nie decyduje się na skorzystanie z tych rozwiązań.\
+Przechodząc do rozkładów zmiennych ciągłych, wykres \ref{fig:histograms} ujawnia kilka ciekawych właściwości. Zmienna **tenure** charakteryzuje się rozkładem U-modalnym, który jest w przybliżeniu symetryczny. **TotalCharges** wyróżnia się natomiast rozkładem jednomodalnym o wyraźnej skośności prawostronnej. Najbardziej interesujący wydaje się rozkład **MonthlyCharges**, który łączy w sobie wcześniej wspomniane cechy. Szczególnie rzuca się w oczy najwyższy słupek po lewej stronie histogramu. Spośród analizowanych cech, największą zmienność wykazuje **TotalCharges**, przy czym większość jej wartości koncentruje się w pobliżu zera.\
+Analizując zmienne ciągłe pod kątem zależności liniowych, zauważamy, że współczynnik korelacji między **tenure** a **MonthlyCharges** jest bliski zeru, co sugeruje brak istotnej zależności liniowej między tymi cechami. Podobny wniosek można wysnuć z [wykresu rozrzutu tych zmiennych](#wykresy_rozrzutu), choć przy nieco wyższym współczynniku korelacji.Na [wykresie](#wykresy_rozrzutu) zależności między zmiennymi **tenure** a **TotalCharges** widać wyraźny trend wzrostowy. Oznacza to, że im dłuższy jest czas korzystania z usług przez klienta, tym większe są opłaty, które ponosi. Chociaż ogólny trend jest rosnący, można zauważyć, że punkty są dosyć rozproszone (szczególnie wraz ze wzrostem czasu korzystania z usług firmy), co może być spowodowane np. dodatkowymi akcjami promocyjnymi, darmowymi okresami próbnymi, zniżkami dla stałych klientów itp.  Najsilniejszą zależność liniową obserwujemy natomiast między **TotalCharges** a iloczynem zmiennych **tenure** i **MonthlyCharges**, który stanowi ich interakcję. W tym przypadku regresja liniowa doskonale odwzorowuje zależność w danych, co potwierdza dobre dopasowanie modelu do obserwacji.
+\newpage
 
 # Etap 3. Analiza opisowa z podziałem na grupy
 
 ## Podstawowe wskaźniki sumaryczne dla zmiennych ciągłych z podziałem na grupy klientów lojalnych i odchodzacych {#sum_tables}
 ```{r sum_table1, echo=FALSE, fig.cap="Porównanie wskaźników sumarycznych zmiennej TotalCharges dla grup klientów lojalnych i odchodzących"}
-
+# funkcja obliczająca wybrane wskaźniki
 wskazniki <- function(X)
 {
   wynik <- c(min(X),quantile(X,0.25), median(X), mean(X), quantile(X,0.75), max(X),sd(X), IQR(X))
@@ -221,12 +222,13 @@ wskazniki <- function(X)
   return(wynik)
 }
 
+# obliczanie wskaźników grupując względem zmiennej Churn
 wskazniki.dla.grup <- by(data=dane$TotalCharges, INDICES=dane$Churn, FUN=wskazniki)
 # tworzymy tabele ze wskaźnikami
 wskazniki.obl <- wskazniki.dla.grup
 tabela    <- rbind(wskazniki.obl$Loyal, wskazniki.obl$Disloyal)
 
-row.names(tabela) <- c("lojalni", "nielojalni")
+row.names(tabela) <- c("Lojalni", "Nielojalni")
 tabela %>%
     kbl(digits=2, caption="Porównanie wskaźników sumarycznych dla grup klientów lojalnych i odchodzących na podstawie zmiennej TotalCharges") %>%
         kable_styling(latex_options = c("HOLD_position"))
@@ -275,7 +277,7 @@ boxplot_maker <- function(var) {
     theme_minimal() +
     theme(axis.title.x = element_blank(), legend.position = "none")
 }
-
+# tworzenie wykresów pudełkowych dla zmiennych ciągłych
 grid.arrange(
   boxplot_maker("tenure"), boxplot_maker("MonthlyCharges"),
   boxplot_maker("TotalCharges"),
@@ -287,7 +289,6 @@ grid.arrange(
 ```{r grouped barplots, echo=FALSE, fig.width = 9, fig.height = 10, fig.cap = "Rozkłady wybranych zmiennych kategorycznych z podziałem na klientów lojalnych i nielojalnych"}
 
 factors.vars <- names(select_if(dane, is.factor))
-
 plot <- function(var){
   
    return(ggplot(dane, aes(x = !!sym(var), fill = Churn)) + geom_bar( ) +
