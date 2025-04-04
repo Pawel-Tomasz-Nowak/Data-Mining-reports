@@ -53,11 +53,10 @@ print(num.cols)
 ```
 
 
-# Zadanie 1.
-## Ocena zdolności dyskryminacyjnych zmiennych ciągłych.
+# Ocena zdolności separacyjnych zmiennych, dyskretyzacja zmiennych ciągłych.
+## Ocena zdolności dyskryminacyjnych zmiennych ciągłych. {#discriminative_power_compare}
 
 W celu zbadania zdolności dyskryminacyjnej cech, posłużymy się wykresem skrzypcowo-pudełkowym (tj. wykresem skrzypcowym wraz z wykresem pudełkowym). 
-
 ```{r violin boxplots, echo=FALSE, fig.width = 9, fig.height = 8, fig.cap = "Wykresy skrzypcowo-pudełkowe dla zmiennych ciągłych"}
   # Create a violin-with-box plot for each continous variable and arrange them in a figure.
     violin.plot.box_maker <- function(var){
@@ -80,7 +79,10 @@ W celu zbadania zdolności dyskryminacyjnej cech, posłużymy się wykresem skrz
 Z wykresów \ref{fig:violin boxplots} wnioskujemy, że największe zdolności dyskryminacyjne wykazuje zmienna *Petal.Width*. Z kolei najmniejsze zdolności do separacji gatunków obserwujemy u zmiennej *Sepal.Width*.
 \newpage
 
-## Porównanie róznych metod dyskretyzacji nienadzorowanej.
+## Porównanie róznych metod dyskretyzacji nienadzorowanej. {#discretization_intro}
+Dla wymienionych wyżej zmiennych (tj. *Petal.Width* oraz *Sepal.Width*) zastosujemy teraz różne techniki przedziałowania (dyskretyzacji) według, odpowiednio, **stałej szerokości** przedziału, **równej częstości**, **algorytmu K-średnich**, **stałych granicach** przedziałów ustalonych przez użytkownika.
+
+
 ```{r discretization, include = FALSE}
 var_discretization <- function(df, var){
   # Estimate the mean and sd of the variable (we'll use these values for fixed-type discretization)
@@ -119,7 +121,7 @@ var_discretization <- function(df, var){
   # Store discretization result in a dataframe.
   df.discr_vals <- data.frame("equal_frequency" = var.discr.freq,
                               "equal_width" = var.discr.width,
-                              "cluster_based" = var.discr.cluster,
+                              "cluster" = var.discr.cluster,
                               "fixed_bounds"= var.discr.user
                               )
   
@@ -135,7 +137,7 @@ var_discretization <- function(df, var){
 ```{r discretization method comparison, echo=FALSE}
 most_common_class <- function(row) {
   # Zlicz ile razy każda klasa występuje w wierszu
-  tab <- table(row)
+  tab <- table(as.character(row))
   # Zwróć klasę z największą liczbą wystąpień (w przypadku remisu bierze pierwszą)
   names(which.max(tab))
 }
@@ -154,29 +156,44 @@ evaluate_method <- function(df, var){
     
   # For each method, find the percentage of matches.
   result_match <- t(apply(df.discr_vals, 1, do_class_match)) %>% 
-    apply(2, function(x){ sum(x)/nrow(df.discr_vals)}) %>%
+    apply(2, function(x){ 100 * sum(x) / nrow(df.discr_vals)}) %>%
     round(2)
+  
   
   # The table with the metrics of accuracy of discretization.
   acc_table <- kable(t(data.frame(Skutecznosc = result_match)), 
-                col.names =c("equal_frequency", "equal_width", "cluster_based", "fixed-bounds"), 
+                col.names = c("Równomierna częstotliwość", 
+                              "Równomierne przedziały", 
+                              "Dyskretyzacja oparta na K-średnich", 
+                              "Stałe granice przedziału"), 
                 row.names = FALSE, 
-                caption = paste("Skuteczność wybranych metod dyskretyzacji dla zmiennej", var))
+                caption = paste("Skuteczność wybranych metod dyskretyzacji dla zmiennej", gsub("\\.", " ",var)))
   
-
- # Return the table
+  # Return the table
   return(acc_table)
 }
 
 
 ```
 
+### Metodologia oceny skuteczności dyskretyzacji.
+Aby ocenić skuteczność każdej ze [wspomnianych metod](#discretization_intro), przyjęliśmy następującą metodologię.
+Najpierw dokonaliśmy przedziałowania każdego przypadku, korzystając ze wszystkich metod, a następnie wybraliśmy tę klasę, która występuje najczęściej (w przypadku tzw. "remisu" wybierana jest dowolna klasa). Następnie sprawdzaliśmy, w ilu przypadkach wynik przedziałowania każdej metody zgadzał się ze zagregowaną klasą. Tę liczbę podzieliliśmy przez liczbę wszystkich przypadków, aby uzyskać skuteczność metody dyskretyzacji wyrażoną w procentach. Porównanie róznych metod przedziałowania zostały przedstawione poniżej
 ```{r binning_results1, echo=FALSE}
 discretization_results <- evaluate_method(iris, "Sepal.Width")
 discretization_results
 ```
 
+
 ```{r binning_results2, echo=FALSE}
 discretization_results <- evaluate_method(iris, "Petal.Width")
 discretization_results
 ```
+
+### Wnioski dotyczące skuteczności przedziałowania.
+<!-- Wtf czemu latex niew idzi referencji do binning_results1? -->
+Z tabel \ref{tab:binning_results1} oraz \ref{tab:binning_results2} możemy wywnioskować, że w obu przypadkach największą skutecznością charakteryzuje się metoda dyskretyzacji oparta na **algorytmie K-średnich**. Z kolei najgorszą skuteczność przedziałowania obserwujemy dla metody opartej na **stałych granicach** przedziału.
+Wyniki dyskretyzacji zastosowanej dla zmiennej *Petal.Width* znaczącą rożnią się od wyników przedziałowania zastosowanego dla atrybutu *Sepal.Width*. 
+Jest to zgodne z intuicją — jak wykazaliśmy [wcześniej](#discriminative_power_compare), najgorsze zdolności separacyjne klas wykazuje właśnie zmienna **Sepal.Width**, co znacząco wpływa na niską skuteczność metod przedziałowania. Analogiczna zależność występuje w przypadku cechy **Petal.Width**, która z kolei charakteryzowała się wysokimi zdolnościami dyskryminacyjnymi, co przełożyło się na wysoką dokładność podejść dyskretyzacji. 
+
+
