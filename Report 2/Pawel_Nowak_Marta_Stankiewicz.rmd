@@ -45,9 +45,34 @@ library(gridExtra)
 data("iris") 
 iris_df <- iris
 
+
+num.cols <- colnames(iris_df %>% dplyr::select( where(is.numeric))) # Find the numerical variables.
+print(num.cols)
 ```
 
 
+# Zadanie 1.
+## Wykresy skrzypcowe z wykresem pudełkowym dla zmiennych ciągłych
 
+W celu zbadania zdolności dyskryminacyjnej cech, posłużymy się wykresem skrzypcowo-pudełkowym (tj. wykresem skrzypcowym wraz z wykresem pudełkowym). 
 
+```{r violin boxplots, echo=FALSE, fig.width = 9, fig.height = 8, fig.cap = "Wykresy skrzypcowo-pudełkowe dla zmiennych ciągłych"}
+  # Create a violin-with-box plot for each continous variable and arrange them in a figure.
+    violin.plot.box_maker <- function(var){
+    ggplot(data = iris_df, 
+           aes(x = Species, y = iris_df[[var]], fill = Species)) +
+      geom_violin(alpha = 0.2) +
+      geom_boxplot(width = 0.15) +
+        ylab(gsub("\\.", " ", var)) + 
+        labs(title = paste("Wykres skrzypcowo-pudełkowy zmiennej\n",var))
+    
+    }
+    
+    grid.arrange(violin.plot.box_maker("Sepal.Length"), violin.plot.box_maker("Sepal.Width"),
+               violin.plot.box_maker("Petal.Length"),
+              violin.plot.box_maker("Petal.Width")
+              )
 
+```
+
+Z wykresów \ref{fig:violin boxplots} wnioskujemy, że największe zdolności dyskryminacyjne wykazuje zmienna *Petal.Width*. Z kolei najmniejsze zdolności do separacji gatunków obserwujemy u zmiennej *Sepal.Width*.
