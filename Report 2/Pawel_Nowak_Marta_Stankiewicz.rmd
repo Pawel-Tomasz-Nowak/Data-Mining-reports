@@ -36,6 +36,7 @@ library(dplyr)
 library(ggplot2)
 library(GGally)
 library(gridExtra)
+library(arules)
 ```
 
 
@@ -52,7 +53,7 @@ print(num.cols)
 
 
 # Zadanie 1.
-## Wykresy skrzypcowe z wykresem pudełkowym dla zmiennych ciągłych
+## Ocena zdolności dyskryminacyjnych zmiennych ciągłych.
 
 W celu zbadania zdolności dyskryminacyjnej cech, posłużymy się wykresem skrzypcowo-pudełkowym (tj. wykresem skrzypcowym wraz z wykresem pudełkowym). 
 
@@ -76,3 +77,60 @@ W celu zbadania zdolności dyskryminacyjnej cech, posłużymy się wykresem skrz
 ```
 
 Z wykresów \ref{fig:violin boxplots} wnioskujemy, że największe zdolności dyskryminacyjne wykazuje zmienna *Petal.Width*. Z kolei najmniejsze zdolności do separacji gatunków obserwujemy u zmiennej *Sepal.Width*.
+
+
+## Porównanie róznych metod dyskretyzacji nienadzorowanej.
+```{r discretization, include = FALSE}
+var.discretization <- function(df, var){
+  # Estimate the mean and sd of the variable (we'll use these values for fixed-type discretization)
+  var.vec <- df[[var]]
+  
+  mean.est <- mean(var.vec)
+  sd.est <- sd(var.vec)
+  
+  
+  # Oparta na równej częstotliwości.
+  var.discr.freq <- discretize(var.vec, 
+                               method = "frequency", 
+                               breaks = 3,
+                               label = c("Krótka", "Średnia", "Długa"))
+  
+  # equal-width discretization
+  var.discr.width <- discretize(var.vec, 
+                                method = "interval", 
+                                breaks = 3,
+                                label = c("Krótka", "Średnia", "Długa"))
+  
+  # cluster discretization
+  var.discr.cluster <- discretize(var.vec, 
+                                  method = "cluster", 
+                                  breaks = 3,
+                                  label = c("Krótka", "Średnia", "Długa"))
+  
+  # user-specified breaks bounds.
+  var.discr.user <- discretize(var.vec,
+                               method = "fixed",
+                               breaks = c(-Inf, mean.est-sd.est, mean.est+sd.est, Inf),
+                               label = c("Krótka", "Średnia", "Długa"))
+
+  
+  
+  # Store discretization result in a dataframe.
+  df.discr_vals <- data.frame("equal_frequency" = var.discr.freq,
+                              "equal_width" = var.discr.width,
+                              "cluster_based" = var.discr.cluster,
+                              "fixed_bounds"= var.discr.user
+                              )
+  
+  # Rename the columns.
+  renamed.columns <- sapply(colnames(df.discr_vals), function(x){ paste(var, " ", x) })
+  colnames(df.discr_vals) = renamed.columns
+  
+  return(df.discr_vals)
+  
+}
+
+var.discretization(iris_df, "Petal.Width")
+
+```
+
