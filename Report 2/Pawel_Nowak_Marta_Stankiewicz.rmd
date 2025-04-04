@@ -1,0 +1,53 @@
+---
+title: "Sprawozdanie z listy 2"
+subtitle: "Eksploracja danych"
+author: "Marta Stankiewicz (282244)  \n Paweł Nowak (282223)"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[OT4]{polski}
+   - \usepackage[utf8]{inputenc}
+   - \usepackage{graphicx}
+   - \usepackage{float}
+output: 
+  pdf_document:
+    toc: true
+    fig_caption: true
+    fig_width: 5 
+    fig_height: 4 
+    number_sections: true
+fontsize: 12pt 
+lof: true
+lot: true
+---
+
+
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, cache = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+knitr::opts_chunk$set(fig.pos = "H", out.extra ='', fig.align = "center")
+
+```
+
+```{r importing libraries, warning=FALSE, include=FALSE}
+# Importing necessary libraries.
+library(datasets)
+library(dplyr)
+library(ggplot2)
+library(GGally)
+library(gridExtra)
+```
+
+
+
+```{r data reading, include=FALSE}
+# Reading the 'iris' data set.
+data("iris") 
+iris_df <- iris
+
+```
+
+
+
+
+

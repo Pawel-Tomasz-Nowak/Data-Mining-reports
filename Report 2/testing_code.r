@@ -12,8 +12,8 @@ num.cols <- colnames(df %>% select( where(is.numeric)))
 violin.plot.box_maker <- function(var){
 ggplot(data = df, 
        aes(x = Species, y = .data[[var]],fill = Species)) +
-  geom_violin(alpha = 0.3) +
-  geom_boxplot(width = 0.1)
+  geom_violin(alpha = 0.2) +
+  geom_boxplot(width = 0.15)
 }
 
 grid.arrange(violin.plot.box_maker("Sepal.Length"),
