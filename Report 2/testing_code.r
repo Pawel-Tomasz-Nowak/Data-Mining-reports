@@ -67,5 +67,16 @@ var.discretization <- function(df, var){
   
 }
 
+library(knitr)
+
+# Przykładowy wektor liczb
+vec <- c(1, 2, 3, 4, 5)
+
+# Zamiana wektora na ramkę danych
+df <- data.frame(Wartości = vec)
+
+# Tworzenie tabeli za pomocą knitr::kable
+kable(df, caption = "Tabela z wektora liczb")
+
 
 

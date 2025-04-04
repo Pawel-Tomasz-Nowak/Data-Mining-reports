@@ -37,6 +37,7 @@ library(ggplot2)
 library(GGally)
 library(gridExtra)
 library(arules)
+library(knitr)
 ```
 
 
@@ -77,11 +78,11 @@ W celu zbadania zdolności dyskryminacyjnej cech, posłużymy się wykresem skrz
 ```
 
 Z wykresów \ref{fig:violin boxplots} wnioskujemy, że największe zdolności dyskryminacyjne wykazuje zmienna *Petal.Width*. Z kolei najmniejsze zdolności do separacji gatunków obserwujemy u zmiennej *Sepal.Width*.
-
+\newpage
 
 ## Porównanie róznych metod dyskretyzacji nienadzorowanej.
 ```{r discretization, include = FALSE}
-var.discretization <- function(df, var){
+var_discretization <- function(df, var){
   # Estimate the mean and sd of the variable (we'll use these values for fixed-type discretization)
   var.vec <- df[[var]]
   
@@ -127,10 +128,55 @@ var.discretization <- function(df, var){
   colnames(df.discr_vals) = renamed.columns
   
   return(df.discr_vals)
-  
-}
-
-var.discretization(iris_df, "Petal.Width")
+  }
 
 ```
 
+```{r discretization method comparison, echo=FALSE}
+most_common_class <- function(row) {
+  # Zlicz ile razy każda klasa występuje w wierszu
+  tab <- table(row)
+  # Zwróć klasę z największą liczbą wystąpień (w przypadku remisu bierze pierwszą)
+  names(which.max(tab))
+}
+
+do_class_match <- function(row){
+  # Porównaj każdy element z ostatnim elementem w wierszu
+  return(as.integer(row[-length(row)] == row[length(row)]))
+}
+
+evaluate_method <- function(df, var){
+  # Discretize the variable.
+  df.discr_vals <- var_discretization(df, var)
+  
+  # Find the most common class row-wise.
+  df.discr_vals$most.common.class <- apply(df.discr_vals, 1, most_common_class)
+    
+  # For each method, find the percentage of matches.
+  result_match <- t(apply(df.discr_vals, 1, do_class_match)) %>% 
+    apply(2, function(x){ sum(x)/nrow(df.discr_vals)}) %>%
+    round(2)
+  
+  # The table with the metrics of accuracy of discretization.
+  acc_table <- kable(t(data.frame(Skutecznosc = result_match)), 
+                col.names =c("equal_frequency", "equal_width", "cluster_based", "fixed-bounds"), 
+                row.names = FALSE, 
+                caption = paste("Skuteczność wybranych metod dyskretyzacji dla zmiennej", var))
+  
+
+ # Return the table
+  return(acc_table)
+}
+
+
+```
+
+```{r binning_results1, echo=FALSE}
+discretization_results <- evaluate_method(iris, "Sepal.Width")
+discretization_results
+```
+
+```{r binning_results2, echo=FALSE}
+discretization_results <- evaluate_method(iris, "Petal.Width")
+discretization_results
+```
