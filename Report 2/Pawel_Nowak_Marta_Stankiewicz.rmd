@@ -53,7 +53,7 @@ print(num.cols)
 ```
 
 
-# Ocena zdolności separacyjnych zmiennych, dyskretyzacja zmiennych ciągłych.
+# Ocena zdolności separacyjnych zmiennych, dyskretyzacja zmiennych ciągłych
 ## Ocena zdolności dyskryminacyjnych zmiennych ciągłych. {#discriminative_power_compare}
 
 W celu zbadania zdolności dyskryminacyjnej cech, posłużymy się wykresem skrzypcowo-pudełkowym (tj. wykresem skrzypcowym wraz z wykresem pudełkowym). 
@@ -176,9 +176,9 @@ evaluate_method <- function(df, var){
 
 ```
 
-### Metodologia oceny skuteczności dyskretyzacji.
+### Metodologia oceny skuteczności dyskretyzacji
 Aby ocenić skuteczność każdej ze [wspomnianych metod](#discretization_intro), przyjęliśmy następującą metodologię.
-Najpierw dokonaliśmy przedziałowania każdego przypadku, korzystając ze wszystkich metod, a następnie wybraliśmy tę klasę, która występuje najczęściej (w przypadku tzw. "remisu" wybierana jest dowolna klasa). Następnie sprawdzaliśmy, w ilu przypadkach wynik przedziałowania każdej metody zgadzał się ze zagregowaną klasą. Tę liczbę podzieliliśmy przez liczbę wszystkich przypadków, aby uzyskać skuteczność metody dyskretyzacji wyrażoną w procentach. Porównanie róznych metod przedziałowania zostały przedstawione poniżej
+Najpierw dokonaliśmy przedziałowania każdej obserwacji, korzystając ze wszystkich metod, a następnie wybraliśmy tę klasę, która występuje najczęściej (w przypadku tzw. "remisu" wybierana jest dowolna klasa). Następnie sprawdzaliśmy, w ilu przypadkach wynik przedziałowania każdej metody zgadzał się ze zagregowaną klasą. Tę liczbę podzieliliśmy przez liczbę wszystkich przypadków, aby uzyskać procent zgodności danej metody dyskretyzacji. Porównanie róznych metod przedziałowania zostały przedstawione poniżej
 ```{r binning_results1, echo=FALSE}
 discretization_results <- evaluate_method(iris, "Sepal.Width")
 discretization_results
@@ -190,10 +190,10 @@ discretization_results <- evaluate_method(iris, "Petal.Width")
 discretization_results
 ```
 
-### Wnioski dotyczące skuteczności przedziałowania.
+### Wnioski dotyczące skuteczności przedziałowania
 <!-- Wtf czemu latex nie widzi referencji do binning_results1? -->
 Z tabel \ref{tab:binning_results1} oraz \ref{tab:binning_results2} możemy wywnioskować, że w obu przypadkach największą skutecznością charakteryzuje się metoda dyskretyzacji oparta na **algorytmie K-średnich**. Z kolei najgorszą skuteczność przedziałowania obserwujemy dla metody opartej na **stałych granicach** przedziału.
 Wyniki dyskretyzacji zastosowanej dla zmiennej *Petal.Width* znaczącą rożnią się od wyników przedziałowania zastosowanego dla atrybutu *Sepal.Width*. 
 Jest to zgodne z intuicją — jak wykazaliśmy [wcześniej](#discriminative_power_compare), najgorsze zdolności separacyjne klas wykazuje właśnie zmienna **Sepal.Width**, co znacząco wpływa na niską skuteczność metod przedziałowania. Analogiczna zależność występuje w przypadku cechy **Petal.Width**, która z kolei charakteryzowała się wysokimi zdolnościami dyskryminacyjnymi, co przełożyło się na wysoką dokładność podejść dyskretyzacji. 
 
-
+# Analiza składowych głównych
