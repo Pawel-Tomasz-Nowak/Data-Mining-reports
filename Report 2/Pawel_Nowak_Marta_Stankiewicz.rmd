@@ -162,9 +162,9 @@ evaluate_method <- function(df, var){
   
   # The table with the metrics of accuracy of discretization.
   acc_table <- kable(t(data.frame(Skutecznosc = result_match)), 
-                col.names = c("Równomierna częstotliwość", 
-                              "Równomierne przedziały", 
-                              "Dyskretyzacja oparta na K-średnich", 
+                col.names = c("Przedziałowanie według równej częstotliwość", 
+                              "Przedziałowanie według równej szerokości", 
+                              "Dyskretyzacja oparta na algorytmie K-średnich", 
                               "Stałe granice przedziału"), 
                 row.names = FALSE, 
                 caption = paste("Skuteczność wybranych metod dyskretyzacji dla zmiennej", gsub("\\.", " ",var)))
@@ -191,7 +191,7 @@ discretization_results
 ```
 
 ### Wnioski dotyczące skuteczności przedziałowania.
-<!-- Wtf czemu latex niew idzi referencji do binning_results1? -->
+<!-- Wtf czemu latex nie widzi referencji do binning_results1? -->
 Z tabel \ref{tab:binning_results1} oraz \ref{tab:binning_results2} możemy wywnioskować, że w obu przypadkach największą skutecznością charakteryzuje się metoda dyskretyzacji oparta na **algorytmie K-średnich**. Z kolei najgorszą skuteczność przedziałowania obserwujemy dla metody opartej na **stałych granicach** przedziału.
 Wyniki dyskretyzacji zastosowanej dla zmiennej *Petal.Width* znaczącą rożnią się od wyników przedziałowania zastosowanego dla atrybutu *Sepal.Width*. 
 Jest to zgodne z intuicją — jak wykazaliśmy [wcześniej](#discriminative_power_compare), najgorsze zdolności separacyjne klas wykazuje właśnie zmienna **Sepal.Width**, co znacząco wpływa na niską skuteczność metod przedziałowania. Analogiczna zależność występuje w przypadku cechy **Petal.Width**, która z kolei charakteryzowała się wysokimi zdolnościami dyskryminacyjnymi, co przełożyło się na wysoką dokładność podejść dyskretyzacji. 
