@@ -26,8 +26,11 @@ lot: true
 knitr::opts_chunk$set(echo = TRUE, cache = FALSE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 knitr::opts_chunk$set(fig.pos = "H", out.extra ='', fig.align = "center")
+knitr::opts_chunk$set(dev.args = list(encoding = "CP1250.ENC"))
+
 
 ```
+
 
 ```{r importing libraries, warning=FALSE, include=FALSE}
 # Importing necessary libraries.
@@ -204,14 +207,14 @@ CQL_df <- read.csv(file = "uaScoresDataFrame.csv") %>%
             mutate(X = NULL)
 
 # Wybierz same cechy ilościowe.
-num_cols <- colnames(select(CQL_df, where(is.numeric)))
+num.cols_CQL <- colnames(select(CQL_df, where(is.numeric)))
 
 ```
 
 ## Porównanie wariancji zmiennych ilościowych.
 W celu porównania wariancji wszystkich zmiennych ilościowych ze zbioru *uaScoresDataFrame*, posłużymy się wykresami pudełkowymi.
-```{r variance_comparison, echo=FALSE, fig.cap="Wykresy pudelkowe zmiennych ciągłych",fig.width = 9, fig.height  = 8}
-CQL_df_longer <- CQL_df %>% pivot_longer( num_cols, values_to = "Realizacja", names_to = "Zmienna")
+```{r variance_comparison_before, echo=FALSE, fig.cap="Wykresy pudelkowe zmiennych ciągłych przed zastosowaniem standaryzacją",fig.width = 9, fig.height  = 8}
+CQL_df_longer <- CQL_df %>% pivot_longer( num.cols_CQL, values_to = "Realizacja", names_to = "Zmienna")
 
 
 ggplot(CQL_df_longer, aes(y = Realizacja, fill = Zmienna)) +
@@ -223,5 +226,33 @@ ggplot(CQL_df_longer, aes(y = Realizacja, fill = Zmienna)) +
   guides(fill = guide_legend(title = NULL))
 
 ```
-Przyjrzyjmy się wykresowi \ref{fig:variance_comparison}. Obserwujemy wysokie zróżnicowanie wariancji. Z jednej strony w badanym zbiorze występują cechy o niskiej dewiacji, która charakteryzuje chociażby zmienną *Commute*. Z drugiej obecność takich zmiennych jak *Environmental.Quality* i *Venture.Capital* pokazują, że nie brakuję atrybutów o wysokiej wariancji..
+Przyjrzyjmy się wykresowi \ref{fig:variance_comparison_before}. Obserwujemy wysokie zróżnicowanie wariancji. Z jednej strony w badanym zbiorze występują cechy o niskiej dewiacji, która charakteryzuje chociażby zmienną *Commute*. Z drugiej obecność takich zmiennych jak *Environmental.Quality* i *Venture.Capital* pokazują, że nie brakuję atrybutów o wysokiej wariancji. W celu ujednolicenia wariancji zmiennych, konieczne będzie zastosowanie standaryzacji.
 
+```{r, feature standarization, echo = FALSE}
+
+df_scaled <- apply(CQL_df[, num.cols_CQL], 
+                   MARGIN = 2, 
+                   FUN = function(x) {(x - mean(x))/sd(x)}
+)
+
+CQL_df_scaled <- as.data.frame(CQL_df)
+CQL_df_scaled[, num.cols_CQL] <- df_scaled
+
+```
+
+
+Na poniższym wykresie \ref{fig:variance_comparison_after} pudełkowym widoczne są efekty standaryzacji zastosowane dla zmiennych ze zbioru danych.
+
+```{r variance_comparison_after, echo=FALSE, fig.cap="Wykresy pudelkowe zmiennych ciągłych po zastosowaniu standaryzacji", fig.width = 9, fig.height  = 8}
+CQL.df_scaled.longer <- CQL_df_scaled %>% pivot_longer( num.cols_CQL, values_to = "Realizacja", names_to = "Zmienna")
+
+
+ggplot(CQL.df_scaled.longer, aes(y = Realizacja, fill = Zmienna)) +
+  geom_boxplot(position=position_dodge(1)) +
+  theme(axis.text.y = element_text(angle = 45, hjust = 1),
+        axis.text.x = element_blank()) +
+  labs(title = "Wykres pudełkowy zmiennych ilościowych",
+       y = "Wartości")+
+  guides(fill = guide_legend(title = NULL))
+
+```

@@ -102,3 +102,6 @@ ggplot(CQL_df_longer, aes(y = Realizacja, fill = Zmienna)) +
        y = "Wartości")+
   guides(fill = guide_legend(title = NULL)) 
 
+
+# Standaryzacja zmiennych.
+df_scaled <- apply(CQL_df[, num.cols_CQL], MARGIN = 2, FUN = function(x) { (x - mean(x))/sd(x)             })
