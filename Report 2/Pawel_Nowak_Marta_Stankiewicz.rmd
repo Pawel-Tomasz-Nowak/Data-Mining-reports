@@ -38,6 +38,7 @@ library(GGally)
 library(gridExtra)
 library(arules)
 library(knitr)
+library(tidyr)
 ```
 
 
@@ -191,9 +192,36 @@ discretization_results
 ```
 
 ### Wnioski dotyczące skuteczności przedziałowania
-<!-- Wtf czemu latex nie widzi referencji do binning_results1? -->
+<!-- Czemu latex nie widzi referencji do binning_results1? -->
 Z tabel \ref{tab:binning_results1} oraz \ref{tab:binning_results2} możemy wywnioskować, że w obu przypadkach największą skutecznością charakteryzuje się metoda dyskretyzacji oparta na **algorytmie K-średnich**. Z kolei najgorszą skuteczność przedziałowania obserwujemy dla metody opartej na **stałych granicach** przedziału.
 Wyniki dyskretyzacji zastosowanej dla zmiennej *Petal.Width* znaczącą rożnią się od wyników przedziałowania zastosowanego dla atrybutu *Sepal.Width*. 
 Jest to zgodne z intuicją — jak wykazaliśmy [wcześniej](#discriminative_power_compare), najgorsze zdolności separacyjne klas wykazuje właśnie zmienna **Sepal.Width**, co znacząco wpływa na niską skuteczność metod przedziałowania. Analogiczna zależność występuje w przypadku cechy **Petal.Width**, która z kolei charakteryzowała się wysokimi zdolnościami dyskryminacyjnymi, co przełożyło się na wysoką dokładność podejść dyskretyzacji. 
 
 # Analiza składowych głównych
+```{r new_dataset_loading, include=FALSE}
+# Loading the new dataset.
+CQL_df <- read.csv(file = "uaScoresDataFrame.csv") %>%
+            mutate(X = NULL)
+
+# Wybierz same cechy ilościowe.
+num_cols <- colnames(select(CQL_df, where(is.numeric)))
+
+```
+
+## Porównanie wariancji zmiennych ilościowych.
+W celu porównania wariancji wszystkich zmiennych ilościowych ze zbioru *uaScoresDataFrame*, posłużymy się wykresami pudełkowymi.
+```{r variance_comparison, echo=FALSE, fig.cap="Wykresy pudelkowe zmiennych ciągłych",fig.width = 9, fig.height  = 8}
+CQL_df_longer <- CQL_df %>% pivot_longer( num_cols, values_to = "Realizacja", names_to = "Zmienna")
+
+
+ggplot(CQL_df_longer, aes(y = Realizacja, fill = Zmienna)) +
+  geom_boxplot(position=position_dodge(1)) +
+  theme(axis.text.y = element_text(angle = 45, hjust = 1),
+        axis.text.x = element_blank()) +
+  labs(title = "Wykres pudełkowy zmiennych ilościowych",
+       y = "Wartości")+
+  guides(fill = guide_legend(title = NULL))
+
+```
+Przyjrzyjmy się wykresowi \ref{fig:variance_comparison}. Obserwujemy wysokie zróżnicowanie wariancji. Z jednej strony w badanym zbiorze występują cechy o niskiej dewiacji, która charakteryzuje chociażby zmienną *Commute*. Z drugiej obecność takich zmiennych jak *Environmental.Quality* i *Venture.Capital* pokazują, że nie brakuję atrybutów o wysokiej wariancji..
+
