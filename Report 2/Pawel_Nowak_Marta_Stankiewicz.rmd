@@ -42,6 +42,7 @@ library(gridExtra)
 library(arules)
 library(knitr)
 library(tidyr)
+library(corrplot)
 ```
 
 
@@ -256,3 +257,16 @@ ggplot(CQL.df_scaled.longer, aes(y = Realizacja, fill = Zmienna)) +
   guides(fill = guide_legend(title = NULL))
 
 ```
+## Badanie korelacji między zmiennymi.
+Po dokonaniu standaryzacji zmiennych ilościowych, zbadamy jeszcze, jak silne są korelacje między atrybutami w zbiorze danych. Występowanie silnej korelacji świadczy o występowaniu reduntantnych zmiennych. Taka redundancja może zostać wyelimonowana za pomocą analizy składowych głównych. Aby poprawić czytelność wykresu, nazwy zmiennych zostały pominięte, a wartość współczynnika została przeskalowana do przedzialu [0;1].
+
+<!-- Rozmiary wykresu korelacji do poprawy, bo tytułu nie widać  -->
+```{r corr matrix, echo = FALSE, fig.cap = "Macierz korelacji dla zmiennych ciągłych"}
+
+corr_matrix <- abs(cor(x = CQL_df[num.cols_CQL], use = "complete.obs"))
+
+corrplot(corr_matrix, method = "square", type = "full", tl.cex = 0.8,
+         title = "Macierz korelacji dla zmiennych ciągłych", tl.pos = FALSE,
+         col.lim = c(0,1))
+```
+
