@@ -20,15 +20,12 @@ lof: true
 lot: true
 ---
 
-
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = FALSE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
-knitr::opts_chunk$set(fig.pos = "H", out.extra ='', fig.align = "center")
+knitr::opts_chunk$set(fig.pos = "H", out.extra = '', fig.align = "center")
 knitr::opts_chunk$set(dev.args = list(encoding = "CP1250.ENC"))
-
-
 ```
 
 
@@ -71,7 +68,6 @@ W celu zbadania zdolności dyskryminacyjnej cech, posłużymy się wykresem skrz
       geom_boxplot(width = 0.15) +
         ylab(gsub("\\.", " ", var)) + 
         labs(title = paste("Wykres skrzypcowo-pudełkowy zmiennej\n",var))
-    
     }
     
     grid.arrange(violin.plot.box_maker("Sepal.Length"), violin.plot.box_maker("Sepal.Width"),
@@ -89,7 +85,7 @@ Dla wymienionych wyżej zmiennych (tj. *Petal.Width* oraz *Sepal.Width*) zastosu
 
 
 ```{r discretization, include = FALSE}
-var_discretization <- function(df, var){
+var_discretization <- function(df, var) {
   # Estimate the mean and sd of the variable (we'll use these values for fixed-type discretization)
   var.vec <- df[[var]]
   
@@ -273,7 +269,7 @@ corrplot(corr_matrix, method = "square", type = "full", tl.cex = 0.8,
 Na podstawie rysunku \ref{fig:corr matrix} można zauważyć, że w zdecydowanej większości przypadków korelacje pomiędzy zmiennymi są stosunkowo słabe. Niemniej jednak, występują również przypadki skrajne, w których wartości współczynnika korelacji — rozpatrywane w sensie bezwzględnym — zbliżają się do jedności, wskazując na silne liniowe powiązania między wybranymi zmiennymi. W związku z tym należy oczekiwać, że redukcja wymiarowości będzie wymagała uwzględnienia relatywnie dużej liczby składowych głównych, aby osiągnąć zakładaną frakcję wyjaśnianej wariancji.
 
 ## Wyznaczanie składowych głównych.
-Dla rozważanego zbioru zmiennych ciągłych wyznaczone zostaną składowe główne. Zostaną porównane ich rozrzut, stopień wyjaśnianej wariancji. Na sam koniec zostanie dobrana odpowiednia liczba składowych głównych, aby całkowita wyjaśniania przez nie wariancja wyniosła co najmniej 80% lub 90% odpowiednio.
+Dla analizowanego zbioru zmiennych ciągłych zostanie przeprowadzona analiza głównych składowych. W jej ramach porównany zostanie rozrzut składowych oraz stopień, w jakim wyjaśniają one całkowitą wariancję danych. Na zakończenie, na podstawie skumulowanej wariancji wyjaśnianej przez kolejne składowe, wyznaczona zostanie minimalna liczba komponentów niezbędnych do osiągnięcia poziomu co najmniej 80% lub 90% całkowitej wariancji.
 ```{r principal components computation, echo = FALSE}
 prin.comp <- prcomp(x = CQL_df[num.cols_CQL], retx = TRUE) # Wyznacz składowe główne.
 
@@ -287,12 +283,14 @@ rotated.df_long <- pivot_longer(PCA_rotated.df,cols = everything(), names_to = "
 # Liczba składowych.
 n.PCA <- ncol(PCA_rotated.df)
 levels.name <- paste(c("PC"), (1:n.PCA), sep = "")
+levels.name <- factor(x = levels.name, 
+                      levels = levels.name,
+                      ordered = TRUE)
 
-levels.name <- factor(x = rotated.df_long$Składowa,
+rotated.df_long$Składowa <- factor(x = rotated.df_long$Składowa,
                                    levels = levels.name, 
                                    ordered = TRUE)
 
-rotated.df_long$Składowa <- levels.name
 
 ```
 
@@ -301,41 +299,64 @@ ggplot(rotated.df_long, aes(y = Wartość, fill = Składowa)) +
   geom_boxplot(position=position_dodge(1)) +
   theme(axis.text.y = element_text(angle = 45, hjust = 1),
         axis.text.x = element_blank()) +
-  labs(title = "Wykres pudełkowy składowych głównych",
+  labs(title = "Wykresy pudełkowe składowych głównych",
        y = "Wartości")+
-  guides(fill = guide_legend(title = NULL))
+  guides(fill = guide_legend(title = NULL)) + theme_minimal()
 
 ```
 
+Mając już wyznaczone składowe główne, możemy odpowiedzieć na pytanie o minimalną liczbę komponentów niezbędnych do osiągnięcia założonej frakcji wyjaśnianej wariancji. W celu ilustracji udziału poszczególnych składowych w ogólnej wariancji danych, odwołajmy się do wykresu \ref{fig:variances explained plot}. Największe przyrosty wariancji obserwowane są dla pierwszych czterech składowych głównych, po czym tempo wzrostu wyraźnie spowalnia. W związku z tym, wstępna analiza sugeruje, iż uwzględnienie jedynie 4–6 pierwszych składowych głównych (spośród wszystkich `r ncol(PCA_rotated.df)` może być wystarczające do uzyskania satysfakcjonującego poziomu odwzorowania struktury danych.
+```{r variances explained plot, echo = FALSE, fig.height=8, fig.width = 9, fig.cap = "Porównanie udziału wariancji wyjaśnianej przez poszczególne składowe główne"}
 
+# Tworzymy ramkę danych zawierającą odsetek wariancji wyjaśnianej przez każdą składową główną.
+var_explained.df <- data.frame(
+  Wyjaśniana_wariancja = PCA_variances / sum(PCA_variances),  # normalizacja wariancji
+  Numer_składowej = levels.name  # numery lub etykiety składowych
+)
 
+# Tworzymy wykres słupkowy przedstawiający udział poszczególnych składowych w wyjaśnianiu całkowitej wariancji
+p1 <- ggplot(var_explained.df, aes(x = Numer_składowej, y = Wyjaśniana_wariancja)) + 
+  geom_bar(stat = "identity", fill = "steelblue") +  # kolorystyka słupków
+  ggtitle("Udział składowych głównych w wyjaśnianiu wariancji") +  # tytuł wykresu
+  ylab("Proporcja wyjaśnianej wariancji") +  # etykieta osi y
+  xlab("Numer składowej głównej") +  # etykieta osi x
+  theme_minimal()  # estetyczny, uproszczony motyw wykresu
 
-
-
-
-
-```{r variances_explained_plot, echo = FALSE, fig.height=8, fig.width = 9, fig.cap = "Wariancje wyjaśniane przez poszczególne zmienne"}
-# Wariancja wyjaśniana przez poszczegolne składowe.
-var_explained.df<- data.frame(Wyjaśniana_wariancja = PCA_variances/sum(PCA_variances),
-                              Numer_składowej = levels.name)
-
-
-p1 <- ggplot(var_explained.df, mapping = aes(x = Numer_składowej, y = Wyjaśniana_wariancja)) + 
-  geom_bar(stat = "identity") +ggtitle("Wariancje wyjaśniane przez składowe główne")
+# Wyświetlamy wykres
 print(p1)
 
 ```
 
-```{r cum.variances_explained_plot, echo = FALSE, fig.height=8, fig.width = 9, fig.cap = "Łączna wyjaśniana wariancja"}
-# Łączna wyjaśniana wariancja przez składowe główne.
-cum.var_explained.df<- data.frame(Łączna_wyjaśniana_wariancja = cumsum(PCA_variances)/sum(PCA_variances),
-                              Numer_składowej = levels.name)
 
-p2 <- ggplot(cum.var_explained.df, mapping = aes(x = Numer_składowej, y = Łączna_wyjaśniana_wariancja)) + 
-  geom_bar(stat = "identity") + ggtitle("Łączna wyjaśniana wariancja")
+```{r cum variances explained plot, echo = FALSE, fig.height=8, fig.width = 9, fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
 
+# Tworzymy ramkę danych zawierającą skumulowaną wariancję wyjaśnianą przez kolejne składowe główne
+cum.var_explained.df <- data.frame(
+  Łączna_wyjaśniana_wariancja = cumsum(PCA_variances) / sum(PCA_variances),  # narastająca suma wariancji
+  Numer_składowej = levels.name  # etykiety składowych głównych
+)
+
+# Wykres słupkowy przedstawiający skumulowaną (narastającą) wariancję wyjaśnianą przez składowe
+p2 <- ggplot(cum.var_explained.df, aes(x = Numer_składowej, y = Łączna_wyjaśniana_wariancja)) +
+  geom_col(fill = "steelblue") +  # słupki w odcieniu niebieskim
+  ggtitle("Skumulowana wariancja wyjaśniana przez składowe główne") +  # tytuł wykresu
+  xlab("Numer składowej głównej") +
+  ylab("Skumulowana proporcja wyjaśnianej wariancji") +
+  scale_y_continuous(limits = c(0, 1)) +  # zakres osi y ograniczony do [0, 1]
+  
+  # Pozioma linia pomocnicza dla 80% wariancji
+  geom_hline(yintercept = 0.8, linetype = "dashed", color = "green", linewidth = 1) +
+  annotate("text", x = 1, y = 0.78, label = "80%", color = "green", hjust = 0) +
+  
+  # Pozioma linia pomocnicza dla 90% wariancji
+  geom_hline(yintercept = 0.9, linetype = "dashed", color = "red", linewidth = 1) +
+  annotate("text", x = 1, y = 0.88, label = "90%", color = "red", hjust = 0) +
+  
+  theme_minimal()  # estetyczny, uproszczony motyw wykresu
+
+# Wyświetlenie wykresu
 print(p2)
 ```
 
-
+Na podstawie wykresu \ref{fig:cum variances explained plot} możemy określić liczbę składowych głównych niezbędnych do osiągnięcia założonego poziomu wyjaśnianej wariancji. W celu odtworzenia 80% całkowitej wariancji zmiennych oryginalnych wystarczające okazuje się uwzględnienie pierwszych sześciu składowych głównych. Natomiast osiągnięcie progu 90% wymaga rozszerzenia tego zbioru do dziewięciu składowych.
 
