@@ -270,3 +270,37 @@ corrplot(corr_matrix, method = "square", type = "full", tl.cex = 0.8,
          col.lim = c(0,1))
 ```
 
+Na podstawie rysunku \ref{fig:corr matrix} można zauważyć, że w zdecydowanej większości przypadków korelacje pomiędzy zmiennymi są stosunkowo słabe. Niemniej jednak, występują również przypadki skrajne, w których wartości współczynnika korelacji — rozpatrywane w sensie bezwzględnym — zbliżają się do jedności, wskazując na silne liniowe powiązania między wybranymi zmiennymi. W związku z tym należy oczekiwać, że redukcja wymiarowości będzie wymagała uwzględnienia relatywnie dużej liczby składowych głównych, aby osiągnąć zakładaną frakcję wyjaśnianej wariancji.
+
+## Wyznaczanie składowych głównych.
+Dla rozważanego zbioru zmiennych ciągłych wyznaczone zostaną składowe główne. Zostaną porównane ich rozrzut, stopień wyjaśnianej wariancji. Na sam koniec zostanie dobrana odpowiednia liczba składowych głównych, aby całkowita wyjaśniania przez nie wariancja wyniosła co najmniej 80% lub 90% odpowiednio.
+```{r principal components computation, echo = FALSE}
+prin.comp <- prcomp(x = CQL_df[num.cols_CQL], retx = TRUE) # Wyznacz składowe główne.
+
+loadings <- prin.comp$rotation # Wyznacz ładunki składowych głównych.
+variances <- (prin.comp$sdev)^2 # Znajdź wariancje składowych głównych.
+rotated.df <- as.data.frame(prin.comp$x) # Wyznacz wartości składowych głównych.
+
+# Przekształć rotated.df to postaci długiej (long form)
+rotated.df_long <- pivot_longer(rotated.df,cols = everything(), names_to = "Składowa", values_to = "Wartość") 
+
+# Liczba składowych.
+n.PCA <- ncol(rotated.df)
+levels.name <- paste(c("PC"), (1:n.PCA), sep = "")
+
+rotated.df_long$Składowa <- factor(x = rotated.df_long$Składowa,
+                                   levels = levels.name, 
+                                   ordered = TRUE)
+
+```
+
+```{r PC variance visualization, echo = FALSE, fig.height =8, fig.width = 9, fig.cap = "Wykresy pudełkowe dla składowych głównych"}
+ggplot(rotated.df_long, aes(y = Wartość, fill = Składowa)) +
+  geom_boxplot(position=position_dodge(1)) +
+  theme(axis.text.y = element_text(angle = 45, hjust = 1),
+        axis.text.x = element_blank()) +
+  labs(title = "Wykres pudełkowy składowych głównych",
+       y = "Wartości")+
+  guides(fill = guide_legend(title = NULL))
+
+```

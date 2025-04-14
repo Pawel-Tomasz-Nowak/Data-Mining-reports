@@ -105,3 +105,12 @@ ggplot(CQL_df_longer, aes(y = Realizacja, fill = Zmienna)) +
 
 # Standaryzacja zmiennych.
 df_scaled <- apply(CQL_df[, num.cols_CQL], MARGIN = 2, FUN = function(x) { (x - mean(x))/sd(x)             })
+
+
+n <- 20
+wektor <- c("PC")
+liczby = as.character(1:n)
+
+napisy <- paste(wektor, liczby, sep = "")
+
+
