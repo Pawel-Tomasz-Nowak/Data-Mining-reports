@@ -277,20 +277,22 @@ Dla rozważanego zbioru zmiennych ciągłych wyznaczone zostaną składowe głó
 ```{r principal components computation, echo = FALSE}
 prin.comp <- prcomp(x = CQL_df[num.cols_CQL], retx = TRUE) # Wyznacz składowe główne.
 
-loadings <- prin.comp$rotation # Wyznacz ładunki składowych głównych.
-variances <- (prin.comp$sdev)^2 # Znajdź wariancje składowych głównych.
-rotated.df <- as.data.frame(prin.comp$x) # Wyznacz wartości składowych głównych.
+PCA_loadings <- prin.comp$rotation # Wyznacz ładunki składowych głównych.
+PCA_variances <- (prin.comp$sdev)^2 # Znajdź wariancje składowych głównych.
+PCA_rotated.df <- as.data.frame(prin.comp$x) # Wyznacz wartości składowych głównych.
 
 # Przekształć rotated.df to postaci długiej (long form)
-rotated.df_long <- pivot_longer(rotated.df,cols = everything(), names_to = "Składowa", values_to = "Wartość") 
+rotated.df_long <- pivot_longer(PCA_rotated.df,cols = everything(), names_to = "Składowa", values_to = "Wartość") 
 
 # Liczba składowych.
-n.PCA <- ncol(rotated.df)
+n.PCA <- ncol(PCA_rotated.df)
 levels.name <- paste(c("PC"), (1:n.PCA), sep = "")
 
-rotated.df_long$Składowa <- factor(x = rotated.df_long$Składowa,
+levels.name <- factor(x = rotated.df_long$Składowa,
                                    levels = levels.name, 
                                    ordered = TRUE)
+
+rotated.df_long$Składowa <- levels.name
 
 ```
 
@@ -304,3 +306,36 @@ ggplot(rotated.df_long, aes(y = Wartość, fill = Składowa)) +
   guides(fill = guide_legend(title = NULL))
 
 ```
+
+
+
+
+
+
+
+
+```{r variances_explained_plot, echo = FALSE, fig.height=8, fig.width = 9, fig.cap = "Wariancje wyjaśniane przez poszczególne zmienne"}
+# Wariancja wyjaśniana przez poszczegolne składowe.
+var_explained.df<- data.frame(Wyjaśniana_wariancja = PCA_variances/sum(PCA_variances),
+                              Numer_składowej = levels.name)
+
+
+p1 <- ggplot(var_explained.df, mapping = aes(x = Numer_składowej, y = Wyjaśniana_wariancja)) + 
+  geom_bar(stat = "identity") +ggtitle("Wariancje wyjaśniane przez składowe główne")
+print(p1)
+
+```
+
+```{r cum.variances_explained_plot, echo = FALSE, fig.height=8, fig.width = 9, fig.cap = "Łączna wyjaśniana wariancja"}
+# Łączna wyjaśniana wariancja przez składowe główne.
+cum.var_explained.df<- data.frame(Łączna_wyjaśniana_wariancja = cumsum(PCA_variances)/sum(PCA_variances),
+                              Numer_składowej = levels.name)
+
+p2 <- ggplot(cum.var_explained.df, mapping = aes(x = Numer_składowej, y = Łączna_wyjaśniana_wariancja)) + 
+  geom_bar(stat = "identity") + ggtitle("Łączna wyjaśniana wariancja")
+
+print(p2)
+```
+
+
+
