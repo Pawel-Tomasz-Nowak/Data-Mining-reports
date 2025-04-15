@@ -358,10 +358,11 @@ p2 <- ggplot(cum.var_explained.df, aes(x = Numer_składowej, y = Łączna_wyjaś
 # Wyświetlenie wykresu
 print(p2)
 ```
-
 Na podstawie wykresu \ref{fig:cum variances explained plot} możemy określić liczbę składowych głównych niezbędnych do osiągnięcia założonego poziomu wyjaśnianej wariancji. W celu odtworzenia 80% całkowitej wariancji zmiennych oryginalnych wystarczające okazuje się uwzględnienie pierwszych sześciu składowych głównych. Natomiast osiągnięcie progu 90% wymaga rozszerzenia tego zbioru do dziewięciu składowych.
 
-```{r components visualization, echo = FALSE, fig.height = 8, fig.width = 9, fig.cap = "Wizualizacja pierwszych dwóch składowych głównych"}
+## Wizualizacja danych wielowymiarowych
+Po przeprowadzeniu redukcji wymiarowości za pomocą analizy głównych składowych (PCA), dokonano wizualizacji danych w przestrzeni wyznaczonej przez dwie pierwsze składowe, które kumulatywnie wyjaśniają największą część zmienności w zbiorze. Celem tej analizy jest identyfikacja potencjalnych struktur skupiskowych wśród obserwacji (miast) oraz wykrycie ewentualnych obserwacji odstających, które znacząco odbiegają od pozostałych pod względem analizowanych cech.
+```{r PCA visualization, echo = FALSE, fig.height = 8, fig.width = 9, fig.cap = "Wizualizacja pierwszych dwóch składowych głównych"}
 
 library(ggplot2)
 library(ggrepel)
@@ -399,3 +400,6 @@ ggplot(pca_data, aes(x = PC1, y = PC2, color = UA_Continent)) +
 
 
 ```
+Większość miast koncentruje się w centralnej części wykresu, co sugeruje znaczny stopień podobieństwa między nimi pod względem analizowanych cech. Mimo to, zauważalne są wyraźnie wyodrębnione grupy miast, które odbiegają od głównego skupiska. W lewym górnym obszarze wykresu wyróżniają się m.in. Londyn, Nowy Jork, Los Angeles czy Chicago – miasta o szczególnym znaczeniu globalnym. Są to zarówno stolice silnych gospodarek (np. Berlin, Londyn), jak i wiodące centra biznesowe i kulturowe (np. Nowy Jork, Los Angeles). Charakterystyczny dla tej grupy jest wysoki poziom rozwoju infrastruktury i aktywności związanych z kulturą czasu wolnego (Leisure Culture) oraz intensywna obecność kapitału wysokiego ryzyka (Venture Capital). 
+
+Drugą wyraźnie wyodrębnioną grupę stanowią miasta zlokalizowane w prawym górnym obszarze wykresu, takie jak Delhi, Pekin, Meksyk czy Bengaluru. Są to dynamicznie rozwijające się metropolie o rosnącym znaczeniu finansowym, technologicznym oraz kulturowym. W odróżnieniu od wcześniej wspomnianych globalnych centrów, charakteryzują się one relatywnie niskimi kosztami życia, co stanowi istotny czynnik przyciągający zarówno mieszkańców, jak i inwestorów oraz przedsiębiorców poszukujących korzystnych warunków do rozwoju działalności.
