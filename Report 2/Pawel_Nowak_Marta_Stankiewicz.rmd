@@ -79,7 +79,6 @@ W celu zbadania zdolności dyskryminacyjnej cech, posłużymy się wykresem skrz
 ```
 
 Z wykresów \ref{fig:violin boxplots} wnioskujemy, że największe zdolności dyskryminacyjne wykazuje zmienna *Petal.Width*. Z kolei najmniejsze zdolności do separacji gatunków obserwujemy u zmiennej *Sepal.Width*.
-\newpage
 
 ## Porównanie róznych metod dyskretyzacji nienadzorowanej. {#discretization_intro}
 Dla wymienionych wyżej zmiennych (tj. *Petal.Width* oraz *Sepal.Width*) zastosujemy teraz różne techniki przedziałowania (dyskretyzacji) według, odpowiednio, **stałej szerokości** przedziału, **równej częstości**, **algorytmu K-średnich**, **stałych granicach** przedziałów ustalonych przez użytkownika.
@@ -194,6 +193,7 @@ discretization_results
 
 ### Wnioski dotyczące skuteczności przedziałowania
 <!-- Czemu latex nie widzi referencji do binning_results1? -->
+<!-- W ref{tab} wpisz etykietki, które ustawiasz jako argument funkcji kable -->
 Z tabel \ref{tab:binning_results1} oraz \ref{tab:binning_results2} możemy wywnioskować, że w obu przypadkach największą skutecznością charakteryzuje się metoda dyskretyzacji oparta na **algorytmie K-średnich**. Z kolei najgorszą skuteczność przedziałowania obserwujemy dla metody opartej na **stałych granicach** przedziału.
 Wyniki dyskretyzacji zastosowanej dla zmiennej *Petal.Width* znaczącą rożnią się od wyników przedziałowania zastosowanego dla atrybutu *Sepal.Width*. 
 Jest to zgodne z intuicją — jak wykazaliśmy [wcześniej](#discriminative_power_compare), najgorsze zdolności separacyjne klas wykazuje właśnie zmienna **Sepal.Width**, co znacząco wpływa na niską skuteczność metod przedziałowania. Analogiczna zależność występuje w przypadku cechy **Petal.Width**, która z kolei charakteryzowała się wysokimi zdolnościami dyskryminacyjnymi, co przełożyło się na wysoką dokładność podejść dyskretyzacji. 
@@ -271,6 +271,7 @@ Na podstawie rysunku \ref{fig:corr matrix} można zauważyć, że w zdecydowanej
 
 ## Wyznaczanie składowych głównych.
 Dla analizowanego zbioru zmiennych ciągłych zostanie przeprowadzona analiza głównych składowych. W jej ramach porównany zostanie rozrzut składowych oraz stopień, w jakim wyjaśniają one całkowitą wariancję danych. Na zakończenie, na podstawie skumulowanej wariancji wyjaśnianej przez kolejne składowe, wyznaczona zostanie minimalna liczba komponentów niezbędnych do osiągnięcia poziomu co najmniej 80% lub 90% całkowitej wariancji.
+
 ```{r principal components computation, echo = FALSE}
 prin.comp <- prcomp(x = CQL_df[num.cols_CQL], retx = TRUE) # Wyznacz składowe główne.
 
@@ -304,9 +305,12 @@ ggplot(rotated.df_long, aes(y = Wartość, fill = Składowa)) +
        y = "Wartości")+
   guides(fill = guide_legend(title = NULL)) + theme_minimal()
 
+
+
 ```
 
 Mając już wyznaczone składowe główne, możemy odpowiedzieć na pytanie o minimalną liczbę komponentów niezbędnych do osiągnięcia założonej frakcji wyjaśnianej wariancji. W celu ilustracji udziału poszczególnych składowych w ogólnej wariancji danych, odwołajmy się do wykresu \ref{fig:variances explained plot}. Największe przyrosty wariancji obserwowane są dla pierwszych czterech składowych głównych, po czym tempo wzrostu wyraźnie spowalnia. W związku z tym, wstępna analiza sugeruje, iż uwzględnienie jedynie 4–6 pierwszych składowych głównych (spośród wszystkich `r ncol(PCA_rotated.df)` może być wystarczające do uzyskania satysfakcjonującego poziomu odwzorowania struktury danych.
+
 ```{r variances explained plot, echo = FALSE, fig.height=8, fig.width = 9, fig.cap = "Porównanie udziału wariancji wyjaśnianej przez poszczególne składowe główne"}
 
 # Tworzymy ramkę danych zawierającą odsetek wariancji wyjaśnianej przez każdą składową główną.
@@ -362,36 +366,33 @@ Na podstawie wykresu \ref{fig:cum variances explained plot} możemy określić l
 
 ## Wizualizacja danych wielowymiarowych
 Po przeprowadzeniu redukcji wymiarowości za pomocą analizy głównych składowych (PCA), dokonano wizualizacji danych w przestrzeni wyznaczonej przez dwie pierwsze składowe, które kumulatywnie wyjaśniają największą część zmienności w zbiorze. Celem tej analizy jest identyfikacja potencjalnych struktur skupiskowych wśród obserwacji (miast) oraz wykrycie ewentualnych obserwacji odstających, które znacząco odbiegają od pozostałych pod względem analizowanych cech.
-```{r PCA visualization, echo = FALSE, fig.height = 8, fig.width = 9, fig.cap = "Wizualizacja pierwszych dwóch składowych głównych"}
-
-library(ggplot2)
-library(ggrepel)
+```{r PCA visualization, echo = FALSE, fig.height = 8, fig.width = 9, fig.cap = "Porównanie udziału wariancji wyjaśnianej przez poszczególne składowe główne bez standaryzacji"}
 
 # Dane PCA + etykiety
-pca_data <- as.data.frame(prin.comp$x)
-pca_data$UA_Name <- CQL_df$UA_Name
-pca_data$UA_Continent <- CQL_df$UA_Continent  # grupowanie
+PCA_data <- as.data.frame(prin.comp$x)
+PCA_data$UA_Name <- CQL_df$UA_Name
+PCA_data$UA_Continent <- CQL_df$UA_Continent  # grupowanie
 
 # Dane dla zmiennych (strzałki)
-pca_vars <- as.data.frame(prin.comp$rotation)
+PCA_vars <- as.data.frame(prin.comp$rotation)
 scale_factor <- 7
 
 # Wykres
-ggplot(pca_data, aes(x = PC1, y = PC2, color = UA_Continent)) +
+ggplot(PCA_data, aes(x = PC1, y = PC2, color = UA_Continent)) +
   geom_point(alpha = 0.4, size = 2) +
   geom_text_repel(aes(label = UA_Name),
                   size = 2,
                   color = "black",     # czarny tekst niezależnie od koloru grupy
                   segment.color = NA, max.overlaps = 30) +
-  geom_segment(data = pca_vars,
+  geom_segment(data = PCA_vars,
                aes(x = 0, y = 0,
                    xend = PC1 * scale_factor,
                    yend = PC2 * scale_factor),
                arrow = arrow(length = unit(0.2, "cm")),
                color = "red") +
-  geom_text_repel(data = pca_vars,
+  geom_text_repel(data = PCA_vars,
                   aes(x = PC1 * scale_factor, y = PC2 * scale_factor,
-                      label = rownames(pca_vars)),
+                      label = rownames(PCA_vars)),
                   color = "red", size = 6, max.overlaps = 300) +
   theme_minimal() +
   labs(title = "Wizualizacja składowych głównych",
@@ -403,3 +404,67 @@ ggplot(pca_data, aes(x = PC1, y = PC2, color = UA_Continent)) +
 Większość miast koncentruje się w centralnej części wykresu, co sugeruje znaczny stopień podobieństwa między nimi pod względem analizowanych cech. Mimo to, zauważalne są wyraźnie wyodrębnione grupy miast, które odbiegają od głównego skupiska. W lewym górnym obszarze wykresu wyróżniają się m.in. Londyn, Nowy Jork, Los Angeles czy Chicago – miasta o szczególnym znaczeniu globalnym. Są to zarówno stolice silnych gospodarek (np. Berlin, Londyn), jak i wiodące centra biznesowe i kulturowe (np. Nowy Jork, Los Angeles). Charakterystyczny dla tej grupy jest wysoki poziom rozwoju infrastruktury i aktywności związanych z kulturą czasu wolnego (Leisure Culture) oraz intensywna obecność kapitału wysokiego ryzyka (Venture Capital). 
 
 Drugą wyraźnie wyodrębnioną grupę stanowią miasta zlokalizowane w prawym górnym obszarze wykresu, takie jak Delhi, Pekin, Meksyk czy Bengaluru. Są to dynamicznie rozwijające się metropolie o rosnącym znaczeniu finansowym, technologicznym oraz kulturowym. W odróżnieniu od wcześniej wspomnianych globalnych centrów, charakteryzują się one relatywnie niskimi kosztami życia, co stanowi istotny czynnik przyciągający zarówno mieszkańców, jak i inwestorów oraz przedsiębiorców poszukujących korzystnych warunków do rozwoju działalności.
+
+
+## PCA bez uwzględnienia standaryzacji.
+W dalszej części analizy porównana zostanie efektywność składowych głównych wyznaczonych na podstawie niestandaryzowanych zmiennych. Celem jest ocena, czy liczba komponentów niezbędnych do osiągnięcia z góry określonego progu wyjaśnionej wariancji istotnie różni się od tej uzyskanej przy zastosowaniu analizy głównych składowych z uprzednią standaryzacją danych.
+```{r PCA variances unstd, echo = FALSE, fig.width = 9, fig.height = 8, fig.cap = "Wykresy pudełkowe dla składowych głównych bez zastosowanej standaryzacji"}
+princ.comp_unstd <- prcomp(x = CQL_df[num.cols_CQL])
+
+PCA_variances_unstd <- (princ.comp_unstd$sdev)^2
+PCA_rotated.df_unstd <- as.data.frame(princ.comp_unstd$x)
+
+PCA_rotated.df_longer_unstd <- pivot_longer(PCA_rotated.df_unstd,
+                                            cols = everything(),
+                                            values_to = "Wartość",
+                                            names_to = "Składowa"
+                                            )
+
+PCA_rotated.df_longer_unstd$Składowa <- factor(x = PCA_rotated.df_longer_unstd$Składowa,
+                                   levels = levels.name, 
+                                   ordered = TRUE)
+
+
+ggplot(PCA_rotated.df_longer_unstd, aes(y = Wartość, fill = Składowa)) +
+  geom_boxplot(position=position_dodge(1)) +
+  theme(axis.text.y = element_text(angle = 45, hjust = 1),
+        axis.text.x = element_blank()) +
+  labs(title = "Wykresy pudełkowe składowych głównych",
+       y = "Wartości")+
+  guides(fill = guide_legend(title = NULL)) + theme_minimal()
+
+
+```
+
+
+```{r cum variances explained plot unstd, echo=FALSE, fig.height = 8, fig.width = 9,fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
+# Wyznacz łączna wyjaśnianą wariancję przez kolejne składowe.
+cum.var_unstd_explained.df <- data.frame(
+  Łączna_wyjaśniana_wariancja = cumsum(PCA_variances_unstd) / sum(PCA_variances_unstd),  # narastająca suma wariancji
+  Numer_składowej = levels.name  # etykiety składowych głównych
+)
+
+
+# Wykres słupkowy przedstawiający skumulowaną (narastającą) wariancję wyjaśnianą przez składowe
+p2 <- ggplot(cum.var_unstd_explained.df, aes(x = Numer_składowej, y = Łączna_wyjaśniana_wariancja)) +
+  geom_col(fill = "steelblue") +  # słupki w odcieniu niebieskim
+  ggtitle("Skumulowana wariancja wyjaśniana przez składowe główne") +  # tytuł wykresu
+  xlab("Numer składowej głównej") +
+  ylab("Skumulowana proporcja wyjaśnianej wariancji") +
+  scale_y_continuous(limits = c(0, 1)) +  # zakres osi y ograniczony do [0, 1]
+  
+  # Pozioma linia pomocnicza dla 80% wariancji
+  geom_hline(yintercept = 0.8, linetype = "dashed", color = "green", linewidth = 1) +
+  annotate("text", x = 1, y = 0.78, label = "80%", color = "green", hjust = 0) +
+  
+  # Pozioma linia pomocnicza dla 90% wariancji
+  geom_hline(yintercept = 0.9, linetype = "dashed", color = "red", linewidth = 1) +
+  annotate("text", x = 1, y = 0.88, label = "90%", color = "red", hjust = 0) +
+  
+  theme_minimal()  # estetyczny, uproszczony motyw wykresu
+
+# Wyświetlenie wykresu
+print(p2)
+```
+Wyniki przedstawione na wykresach \ref{fig:PCA variances unstd} oraz \ref{fig:cum variances explained plot unstd} wskazują, że brak standaryzacji danych nie wpływa istotnie na liczbę głównych składowych niezbędnych do osiągnięcia zadowalającego poziomu wyjaśnionej wariancji. Rozkład wariancji poszczególnych składowych nie odbiega w sposób znaczący od obserwowanego na wykresie \ref{fig:PC variance visualization}, gdzie uprzednio zastosowano standaryzację danych.
+
