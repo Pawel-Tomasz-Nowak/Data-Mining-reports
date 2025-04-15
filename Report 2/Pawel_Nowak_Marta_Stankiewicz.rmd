@@ -30,7 +30,7 @@ knitr::opts_chunk$set(dev.args = list(encoding = "CP1250.ENC"))
 
 
 ```{r importing libraries, warning=FALSE, include=FALSE}
-# Importing necessary libraries.
+# Importowanie niezbędnych bibliotek
 library(datasets)
 library(dplyr)
 library(ggplot2)
@@ -40,6 +40,7 @@ library(arules)
 library(knitr)
 library(tidyr)
 library(corrplot)
+library(ggrepel)
 ```
 
 
@@ -86,32 +87,32 @@ Dla wymienionych wyżej zmiennych (tj. *Petal.Width* oraz *Sepal.Width*) zastosu
 
 ```{r discretization, include = FALSE}
 var_discretization <- function(df, var) {
-  # Estimate the mean and sd of the variable (we'll use these values for fixed-type discretization)
   var.vec <- df[[var]]
   
+  # Oszacuj średnią oraz wariancję (użyjemy ich do okreslenia własnych granic przedziałów)
   mean.est <- mean(var.vec)
   sd.est <- sd(var.vec)
   
   
-  # Oparta na równej częstotliwości.
+  # Przedziałowanie oparte na równej częstotliwości przedziałów.
   var.discr.freq <- discretize(var.vec, 
                                method = "frequency", 
                                breaks = 3,
                                label = c("Krótka", "Średnia", "Długa"))
   
-  # equal-width discretization
+  # Przedziałowanie oparte na przedziałach równej długości.
   var.discr.width <- discretize(var.vec, 
                                 method = "interval", 
                                 breaks = 3,
                                 label = c("Krótka", "Średnia", "Długa"))
   
-  # cluster discretization
+  # Przedziałowanie oparte na klasteryzacji.
   var.discr.cluster <- discretize(var.vec, 
                                   method = "cluster", 
                                   breaks = 3,
                                   label = c("Krótka", "Średnia", "Długa"))
   
-  # user-specified breaks bounds.
+  # Przedziałowanie na podstawie wartości granic przedziałów użytkownika.
   var.discr.user <- discretize(var.vec,
                                method = "fixed",
                                breaks = c(-Inf, mean.est-sd.est, mean.est+sd.est, Inf),
@@ -119,7 +120,7 @@ var_discretization <- function(df, var) {
 
   
   
-  # Store discretization result in a dataframe.
+  # Wyniki przedziałowania umieść w ramce danych.
   df.discr_vals <- data.frame("equal_frequency" = var.discr.freq,
                               "equal_width" = var.discr.width,
                               "cluster" = var.discr.cluster,
@@ -360,3 +361,41 @@ print(p2)
 
 Na podstawie wykresu \ref{fig:cum variances explained plot} możemy określić liczbę składowych głównych niezbędnych do osiągnięcia założonego poziomu wyjaśnianej wariancji. W celu odtworzenia 80% całkowitej wariancji zmiennych oryginalnych wystarczające okazuje się uwzględnienie pierwszych sześciu składowych głównych. Natomiast osiągnięcie progu 90% wymaga rozszerzenia tego zbioru do dziewięciu składowych.
 
+```{r components visualization, echo = FALSE, fig.height = 8, fig.width = 9, fig.cap = "Wizualizacja pierwszych dwóch składowych głównych"}
+
+library(ggplot2)
+library(ggrepel)
+
+# Dane PCA + etykiety
+pca_data <- as.data.frame(prin.comp$x)
+pca_data$UA_Name <- CQL_df$UA_Name
+pca_data$UA_Continent <- CQL_df$UA_Continent  # grupowanie
+
+# Dane dla zmiennych (strzałki)
+pca_vars <- as.data.frame(prin.comp$rotation)
+scale_factor <- 7
+
+# Wykres
+ggplot(pca_data, aes(x = PC1, y = PC2, color = UA_Continent)) +
+  geom_point(alpha = 0.4, size = 2) +
+  geom_text_repel(aes(label = UA_Name),
+                  size = 2,
+                  color = "black",     # czarny tekst niezależnie od koloru grupy
+                  segment.color = NA, max.overlaps = 30) +
+  geom_segment(data = pca_vars,
+               aes(x = 0, y = 0,
+                   xend = PC1 * scale_factor,
+                   yend = PC2 * scale_factor),
+               arrow = arrow(length = unit(0.2, "cm")),
+               color = "red") +
+  geom_text_repel(data = pca_vars,
+                  aes(x = PC1 * scale_factor, y = PC2 * scale_factor,
+                      label = rownames(pca_vars)),
+                  color = "red", size = 6, max.overlaps = 300) +
+  theme_minimal() +
+  labs(title = "Wizualizacja składowych głównych",
+       x = "PC1", y = "PC2", color = "Continent")
+
+
+
+```
