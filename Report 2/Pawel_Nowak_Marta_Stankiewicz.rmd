@@ -179,7 +179,7 @@ evaluate_method <- function(df, var){
 
 ### Metodologia oceny skuteczności dyskretyzacji
 Aby ocenić skuteczność każdej ze [wspomnianych metod](#discretization_intro), przyjęliśmy następującą metodologię.
-Najpierw dokonaliśmy przedziałowania każdej obserwacji, korzystając ze wszystkich metod, a następnie wybraliśmy tę klasę, która występuje najczęściej (w przypadku tzw. "remisu" wybierana jest dowolna klasa). Następnie sprawdzaliśmy, w ilu przypadkach wynik przedziałowania każdej metody zgadzał się ze zagregowaną klasą. Tę liczbę podzieliliśmy przez liczbę wszystkich przypadków, aby uzyskać procent zgodności danej metody dyskretyzacji. Porównanie róznych metod przedziałowania zostały przedstawione poniżej
+Najpierw dokonaliśmy przedziałowania każdej obserwacji, korzystając ze wszystkich metod, a następnie wybraliśmy tę klasę, która występuje najczęściej (w przypadku tzw. "remisu" wybierana jest dowolna klasa). Następnie sprawdzaliśmy, w ilu przypadkach wynik przedziałowania każdej metody zgadzał się ze zagregowaną klasą. Tę liczbę podzieliliśmy przez liczbę wszystkich przypadków, aby uzyskać procent zgodności danej metody dyskretyzacji. Porównanie różnych metod przedziałowania zostały przedstawione poniżej
 ```{r binning_results1, echo=FALSE}
 discretization_results <- evaluate_method(iris, "Sepal.Width")
 discretization_results
@@ -468,3 +468,47 @@ print(p2)
 ```
 Wyniki przedstawione na wykresach \ref{fig:PCA variances unstd} oraz \ref{fig:cum variances explained plot unstd} wskazują, że brak standaryzacji danych nie wpływa istotnie na liczbę głównych składowych niezbędnych do osiągnięcia zadowalającego poziomu wyjaśnionej wariancji. Rozkład wariancji poszczególnych składowych nie odbiega w sposób znaczący od obserwowanego na wykresie \ref{fig:PC variance visualization}, gdzie uprzednio zastosowano standaryzację danych.
 
+
+## Skalowanie wielowymiarowe (Multidimentional Scaling (MDS))
+```{r titanic_dataset_loading, include=FALSE}
+library(titanic)
+titanic_data <- titanic_train
+# sprawdzenie, czy typy zmiennych są poprawnie przypisane
+str(titanic_data)
+
+# zamiana na typ factor
+convert <- c("Survived","Sex")
+titanic_data[convert] <- lapply(titanic_data[convert], as.factor)
+titanic_data$Pclass <- factor(titanic_data$Pclass, ordered=TRUE, levels=c(3,2,1))
+# najczęstszy port
+most_common <- names(sort(table(titanic_train$Embarked), decreasing = TRUE))[1]
+# zamiana braku danych, na najczęściej występujący port i zmiana typu danych na factor
+titanic_data <- titanic_data %>%
+  mutate(Embarked = na_if(Embarked, "")) %>%
+  mutate(Embarked = replace_na(Embarked, most_common)) %>%
+  mutate(Embarked = as.factor(Embarked))
+
+# usunięcie danych identyfikujących pasażerów
+identifing <- c("PassengerId", "Name", "Ticket", "Cabin")
+titanic_data <- titanic_data %>%
+  select(-all_of(intersect(names(titanic_data), identifing)))
+
+# ponowne sprawdzenie
+str(titanic_data)
+
+```
+
+## Redukcja wymiaru na bazie MDS
+```{r reduction, echo=FALSE}
+library(cluster)
+
+titanic_dissim <- titanic_data[, -1]  
+
+# Macierz odmienności
+dissim_matrix <- daisy(titanic_dissim)
+
+# Zamiana na zwykłą macierz
+dmat <- as.matrix(dissim_matrix)
+
+
+```
