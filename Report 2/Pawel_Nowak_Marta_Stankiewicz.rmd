@@ -2,7 +2,7 @@
 title: "Sprawozdanie z listy 2"
 subtitle: "Eksploracja danych"
 author: "Marta Stankiewicz (282244)  \n Paweł Nowak (282223)"
-date: "`r Sys.Date()`"
+date: "r Sys.Date()"
 header-includes:
    - \usepackage[OT4]{polski}
    - \usepackage[utf8]{inputenc}
@@ -20,7 +20,6 @@ lof: true
 lot: true
 ---
 
----
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE, cache = FALSE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
@@ -41,6 +40,10 @@ library(knitr)
 library(tidyr)
 library(corrplot)
 library(ggrepel)
+library(xtable)
+library(titanic)
+library(cluster)
+
 ```
 
 
@@ -156,45 +159,50 @@ evaluate_method <- function(df, var){
   df.discr_vals$most.common.class <- apply(df.discr_vals, 1, most_common_class)
     
   # For each method, find the percentage of matches.
-  result_match <- t(apply(df.discr_vals, 1, do_class_match)) %>% 
+  results <- t(apply(df.discr_vals, 1, do_class_match)) %>% 
     apply(2, function(x){ 100 * sum(x) / nrow(df.discr_vals)}) %>%
     round(2)
   
+  return(results)
   
-  # The table with the metrics of accuracy of discretization.
-  acc_table <- kable(t(data.frame(Skutecznosc = result_match)), 
-                col.names = c("Przedziałowanie według równej częstotliwość", 
-                              "Przedziałowanie według równej szerokości", 
-                              "Dyskretyzacja oparta na algorytmie K-średnich", 
-                              "Stałe granice przedziału"), 
-                row.names = FALSE, 
-                caption = paste("Skuteczność wybranych metod dyskretyzacji dla zmiennej", gsub("\\.", " ",var)))
-  
-  # Return the table
-  return(acc_table)
+ 
 }
-
-
 ```
 
 ### Metodologia oceny skuteczności dyskretyzacji
 Aby ocenić skuteczność każdej ze [wspomnianych metod](#discretization_intro), przyjęliśmy następującą metodologię.
 Najpierw dokonaliśmy przedziałowania każdej obserwacji, korzystając ze wszystkich metod, a następnie wybraliśmy tę klasę, która występuje najczęściej (w przypadku tzw. "remisu" wybierana jest dowolna klasa). Następnie sprawdzaliśmy, w ilu przypadkach wynik przedziałowania każdej metody zgadzał się ze zagregowaną klasą. Tę liczbę podzieliliśmy przez liczbę wszystkich przypadków, aby uzyskać procent zgodności danej metody dyskretyzacji. Porównanie różnych metod przedziałowania zostały przedstawione poniżej
-```{r binning_results1, echo=FALSE}
-discretization_results <- evaluate_method(iris, "Sepal.Width")
-discretization_results
+```{r Sepal Width binning, echo=FALSE, eval=TRUE, results='asis'}
+
+results <- t(data.frame(evaluate_method(iris_df, "Sepal.Width")))
+
+colnames(results) <- c("Równa częstotliwość",
+                            "Równa szerokości",
+                            "K-średnie",
+                            "Stałe granice")
+
+
+tab1 <- xtable(results, digits = 3, row.names = FALSE, caption = "Ocena przedziałowania zmiennej Sepal Width", label = "tab:Sepal.Width.Binning")
+print(tab1, type = "latex", table.placement = "H", comment=FALSE, include.rownames = FALSE)
+
 ```
+```{r Petal Width binning, echo=FALSE, eval=TRUE, results='asis'}
+
+results <- t(data.frame(evaluate_method(iris_df, "Petal.Width")))
+
+colnames(results) <- c("Równa częstotliwość",
+                            "Równa szerokości",
+                            "K-średnie",
+                            "Stałe granice")
 
 
-```{r binning_results2, echo=FALSE}
-discretization_results <- evaluate_method(iris, "Petal.Width")
-discretization_results
+tab2 <- xtable(results, digits = 3, row.names = FALSE, caption = "Ocena przedziałowania zmiennej Petal Width", label = "tab:Petal.Width.Binning")
+print(tab2, type = "latex", table.placement = "H", comment=FALSE, include.rownames = FALSE)
+
 ```
 
 ### Wnioski dotyczące skuteczności przedziałowania
-<!-- Czemu latex nie widzi referencji do binning_results1? -->
-<!-- W ref{tab} wpisz etykietki, które ustawiasz jako argument funkcji kable -->
-Z tabel \ref{tab:binning_results1} oraz \ref{tab:binning_results2} możemy wywnioskować, że w obu przypadkach największą skutecznością charakteryzuje się metoda dyskretyzacji oparta na **algorytmie K-średnich**. Z kolei najgorszą skuteczność przedziałowania obserwujemy dla metody opartej na **stałych granicach** przedziału.
+Z tabel \ref{tab:Sepal.Width.Binning} oraz \ref{tab:Petal.Width.Binning} możemy wywnioskować, że w obu przypadkach największą skutecznością charakteryzuje się metoda dyskretyzacji oparta na **algorytmie K-średnich**. Z kolei najgorszą skuteczność przedziałowania obserwujemy dla metody opartej na **stałych granicach** przedziału.
 Wyniki dyskretyzacji zastosowanej dla zmiennej *Petal.Width* znaczącą rożnią się od wyników przedziałowania zastosowanego dla atrybutu *Sepal.Width*. 
 Jest to zgodne z intuicją — jak wykazaliśmy [wcześniej](#discriminative_power_compare), najgorsze zdolności separacyjne klas wykazuje właśnie zmienna **Sepal.Width**, co znacząco wpływa na niską skuteczność metod przedziałowania. Analogiczna zależność występuje w przypadku cechy **Petal.Width**, która z kolei charakteryzowała się wysokimi zdolnościami dyskryminacyjnymi, co przełożyło się na wysoką dokładność podejść dyskretyzacji. 
 
@@ -212,15 +220,14 @@ num.cols_CQL <- colnames(select(CQL_df, where(is.numeric)))
 ## Porównanie wariancji zmiennych ilościowych.
 W celu porównania wariancji wszystkich zmiennych ilościowych ze zbioru *uaScoresDataFrame*, posłużymy się wykresami pudełkowymi.
 ```{r variance_comparison_before, echo=FALSE, fig.cap="Wykresy pudelkowe zmiennych ciągłych przed zastosowaniem standaryzacją",fig.width = 9, fig.height  = 8}
-CQL_df_longer <- CQL_df %>% pivot_longer( num.cols_CQL, values_to = "Realizacja", names_to = "Zmienna")
-
+CQL_df_longer <- CQL_df %>% pivot_longer(num.cols_CQL, values_to = "Realizacja", names_to = "Zmienna")
 
 ggplot(CQL_df_longer, aes(y = Realizacja, fill = Zmienna)) +
   geom_boxplot(position=position_dodge(1)) +
   theme(axis.text.y = element_text(angle = 45, hjust = 1),
         axis.text.x = element_blank()) +
   labs(title = "Wykres pudełkowy zmiennych ilościowych",
-       y = "Wartości")+
+       y = "Wartości") +
   guides(fill = guide_legend(title = NULL))
 
 ```
@@ -254,17 +261,20 @@ ggplot(CQL.df_scaled.longer, aes(y = Realizacja, fill = Zmienna)) +
   guides(fill = guide_legend(title = NULL))
 
 ```
+\newpage
 ## Badanie korelacji między zmiennymi.
 Po dokonaniu standaryzacji zmiennych ilościowych, zbadamy jeszcze, jak silne są korelacje między atrybutami w zbiorze danych. Występowanie silnej korelacji świadczy o występowaniu reduntantnych zmiennych. Taka redundancja może zostać wyelimonowana za pomocą analizy składowych głównych. Aby poprawić czytelność wykresu, nazwy zmiennych zostały pominięte, a wartość współczynnika została przeskalowana do przedzialu [0;1].
 
-<!-- Rozmiary wykresu korelacji do poprawy, bo tytułu nie widać  -->
 ```{r corr matrix, echo = FALSE, fig.cap = "Macierz korelacji dla zmiennych ciągłych"}
-
 corr_matrix <- abs(cor(x = CQL_df[num.cols_CQL], use = "complete.obs"))
 
+old_par <- par(no.readonly = TRUE)
+par(mar = c(1, 1, 5, 1))  # Dół, lewo, góra, prawo
+
 corrplot(corr_matrix, method = "square", type = "full", tl.cex = 0.8,
-         title = "Macierz korelacji dla zmiennych ciągłych", tl.pos = FALSE,
-         col.lim = c(0,1))
+         tl.pos = FALSE, col.lim = c(0, 1))
+
+par(old_par)  # Przywróć ustawienia
 ```
 
 Na podstawie rysunku \ref{fig:corr matrix} można zauważyć, że w zdecydowanej większości przypadków korelacje pomiędzy zmiennymi są stosunkowo słabe. Niemniej jednak, występują również przypadki skrajne, w których wartości współczynnika korelacji — rozpatrywane w sensie bezwzględnym — zbliżają się do jedności, wskazując na silne liniowe powiązania między wybranymi zmiennymi. W związku z tym należy oczekiwać, że redukcja wymiarowości będzie wymagała uwzględnienia relatywnie dużej liczby składowych głównych, aby osiągnąć zakładaną frakcję wyjaśnianej wariancji.
@@ -408,7 +418,7 @@ Drugą wyraźnie wyodrębnioną grupę stanowią miasta zlokalizowane w prawym g
 
 ## PCA bez uwzględnienia standaryzacji.
 W dalszej części analizy porównana zostanie efektywność składowych głównych wyznaczonych na podstawie niestandaryzowanych zmiennych. Celem jest ocena, czy liczba komponentów niezbędnych do osiągnięcia z góry określonego progu wyjaśnionej wariancji istotnie różni się od tej uzyskanej przy zastosowaniu analizy głównych składowych z uprzednią standaryzacją danych.
-```{r PCA variances unstd, echo = FALSE, fig.width = 9, fig.height = 8, fig.cap = "Wykresy pudełkowe dla składowych głównych bez zastosowanej standaryzacji"}
+```{r PCA variances unstd, echo = FALSE, fig.width = 9, fig.height = 6, fig.cap = "Wykresy pudełkowe dla składowych głównych bez zastosowanej standaryzacji"}
 princ.comp_unstd <- prcomp(x = CQL_df[num.cols_CQL])
 
 PCA_variances_unstd <- (princ.comp_unstd$sdev)^2
@@ -466,12 +476,16 @@ p2 <- ggplot(cum.var_unstd_explained.df, aes(x = Numer_składowej, y = Łączna_
 # Wyświetlenie wykresu
 print(p2)
 ```
-Wyniki przedstawione na wykresach \ref{fig:PCA variances unstd} oraz \ref{fig:cum variances explained plot unstd} wskazują, że brak standaryzacji danych nie wpływa istotnie na liczbę głównych składowych niezbędnych do osiągnięcia zadowalającego poziomu wyjaśnionej wariancji. Rozkład wariancji poszczególnych składowych nie odbiega w sposób znaczący od obserwowanego na wykresie \ref{fig:PC variance visualization}, gdzie uprzednio zastosowano standaryzację danych.
+Wyniki przedstawione na wykresach \ref{fig:PCA variances unstd} oraz \ref{fig:cum variances explained plot unstd} wskazują, że brak standaryzacji danych nie wpływa istotnie na liczbę głównych składowych niezbędnych do osiągnięcia zadowalającego poziomu wyjaśnionej wariancji. Łączna wariancja kolejnych składowych nie odbiega w sposób znaczący od łącznej wariancji obserwowanej na wykresie \ref{fig:cum variances explained plot}, gdzie uprzednio zastosowano standaryzację danych.
+
+\newpage
+## Wnioski końcowe
+Na podstawie przeprowadzonej analizy PCA stwierdzono, że standaryzacja zmiennych ciągłych nie wpłynęła znacząco na strukturę głównych składowych. Może to sugerować, że dane te były już wcześniej porównywalne pod względem skali. W wyniku analizy ustalono, że do zachowania 90% całkowitej wariancji wystarcza 9 spośród 17 składowych, co oznacza, że część cech może być redundantna. Uzyskane wyniki wskazują, że dane zawierają pewien poziom powtarzalności informacji, co może być wykorzystane w dalszej analizie, na przykład przez ograniczenie liczby zmiennych wejściowych w modelach predykcyjnych. Redukcja wymiarowości może przyczynić się do uproszczenia modeli, skrócenia czasu obliczeń oraz poprawy ich interpretowalności.
 
 
-## Skalowanie wielowymiarowe (Multidimentional Scaling (MDS))
+
+# Skalowanie wielowymiarowe (Multidimentional Scaling (MDS))
 ```{r titanic_dataset_loading, include=FALSE}
-library(titanic)
 titanic_data <- titanic_train
 # sprawdzenie, czy typy zmiennych są poprawnie przypisane
 str(titanic_data)
@@ -500,8 +514,6 @@ str(titanic_data)
 
 ## Redukcja wymiaru na bazie MDS
 ```{r reduction, echo=FALSE}
-library(cluster)
-
 titanic_dissim <- titanic_data[, -1]  
 
 # Macierz odmienności
@@ -512,3 +524,4 @@ dmat <- as.matrix(dissim_matrix)
 
 
 ```
+
