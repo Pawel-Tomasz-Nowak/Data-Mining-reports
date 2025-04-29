@@ -2,7 +2,7 @@
 title: "Sprawozdanie z listy 2"
 subtitle: "Eksploracja danych"
 author: "Marta Stankiewicz (282244)  \n Paweł Nowak (282223)"
-date: "r Sys.Date()"
+date: "`r Sys.Date()`"
 header-includes:
    - \usepackage[OT4]{polski}
    - \usepackage[utf8]{inputenc}
@@ -21,7 +21,7 @@ lot: true
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE, cache = FALSE)
+knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
 knitr::opts_chunk$set(fig.pos = "H", out.extra = '', fig.align = "center")
 knitr::opts_chunk$set(dev.args = list(encoding = "CP1250.ENC"))
@@ -63,7 +63,7 @@ print(num.cols)
 ## Ocena zdolności dyskryminacyjnych zmiennych ciągłych. {#discriminative_power_compare}
 
 W celu zbadania zdolności dyskryminacyjnej cech, posłużymy się wykresem skrzypcowo-pudełkowym (tj. wykresem skrzypcowym wraz z wykresem pudełkowym). 
-```{r violin boxplots, echo=FALSE, fig.width = 9, fig.height = 8, fig.cap = "Wykresy skrzypcowo-pudełkowe dla zmiennych ciągłych"}
+```{r violin boxplots, fig.width = 9, fig.height = 8, fig.cap = "Wykresy skrzypcowo-pudełkowe dla zmiennych ciągłych"}
   # Create a violin-with-box plot for each continous variable and arrange them in a figure.
     violin.plot.box_maker <- function(var){
     ggplot(data = iris_df, 
@@ -138,7 +138,7 @@ var_discretization <- function(df, var) {
 
 ```
 
-```{r discretization method comparison, echo=FALSE}
+```{r discretization method comparison}
 most_common_class <- function(row) {
   # Zlicz ile razy każda klasa występuje w wierszu
   tab <- table(as.character(row))
@@ -172,7 +172,7 @@ evaluate_method <- function(df, var){
 ### Metodologia oceny skuteczności dyskretyzacji
 Aby ocenić skuteczność każdej ze [wspomnianych metod](#discretization_intro), przyjęliśmy następującą metodologię.
 Najpierw dokonaliśmy przedziałowania każdej obserwacji, korzystając ze wszystkich metod, a następnie wybraliśmy tę klasę, która występuje najczęściej (w przypadku tzw. "remisu" wybierana jest dowolna klasa). Następnie sprawdzaliśmy, w ilu przypadkach wynik przedziałowania każdej metody zgadzał się ze zagregowaną klasą. Tę liczbę podzieliliśmy przez liczbę wszystkich przypadków, aby uzyskać procent zgodności danej metody dyskretyzacji. Porównanie różnych metod przedziałowania zostały przedstawione poniżej
-```{r Sepal Width binning, echo=FALSE, eval=TRUE, results='asis'}
+```{r Sepal Width binning, eval=TRUE, results='asis'}
 
 results <- t(data.frame(evaluate_method(iris_df, "Sepal.Width")))
 
@@ -186,7 +186,7 @@ tab1 <- xtable(results, digits = 3, row.names = FALSE, caption = "Ocena przedzia
 print(tab1, type = "latex", table.placement = "H", comment=FALSE, include.rownames = FALSE)
 
 ```
-```{r Petal Width binning, echo=FALSE, eval=TRUE, results='asis'}
+```{r Petal Width binning, eval=TRUE, results='asis'}
 
 results <- t(data.frame(evaluate_method(iris_df, "Petal.Width")))
 
@@ -219,7 +219,7 @@ num.cols_CQL <- colnames(select(CQL_df, where(is.numeric)))
 
 ## Porównanie wariancji zmiennych ilościowych.
 W celu porównania wariancji wszystkich zmiennych ilościowych ze zbioru *uaScoresDataFrame*, posłużymy się wykresami pudełkowymi.
-```{r variance_comparison_before, echo=FALSE, fig.cap="Wykresy pudelkowe zmiennych ciągłych przed zastosowaniem standaryzacją",fig.width = 9, fig.height  = 8}
+```{r variance_comparison_before,fig.cap="Wykresy pudelkowe zmiennych ciągłych przed zastosowaniem standaryzacją",fig.width = 9, fig.height  = 8}
 CQL_df_longer <- CQL_df %>% pivot_longer(num.cols_CQL, values_to = "Realizacja", names_to = "Zmienna")
 
 ggplot(CQL_df_longer, aes(y = Realizacja, fill = Zmienna)) +
@@ -233,7 +233,7 @@ ggplot(CQL_df_longer, aes(y = Realizacja, fill = Zmienna)) +
 ```
 Przyjrzyjmy się wykresowi \ref{fig:variance_comparison_before}. Obserwujemy wysokie zróżnicowanie wariancji. Z jednej strony w badanym zbiorze występują cechy o niskiej dewiacji, która charakteryzuje chociażby zmienną *Commute*. Z drugiej obecność takich zmiennych jak *Environmental.Quality* i *Venture.Capital* pokazują, że nie brakuję atrybutów o wysokiej wariancji. W celu ujednolicenia wariancji zmiennych, konieczne będzie zastosowanie standaryzacji.
 
-```{r, feature standarization, echo = FALSE}
+```{r, feature standarization}
 
 df_scaled <- apply(CQL_df[, num.cols_CQL], 
                    MARGIN = 2, 
@@ -248,7 +248,7 @@ CQL_df_scaled[, num.cols_CQL] <- df_scaled
 
 Na poniższym wykresie \ref{fig:variance_comparison_after} pudełkowym widoczne są efekty standaryzacji zastosowane dla zmiennych ze zbioru danych.
 
-```{r variance_comparison_after, echo=FALSE, fig.cap="Wykresy pudelkowe zmiennych ciągłych po zastosowaniu standaryzacji", fig.width = 9, fig.height  = 8}
+```{r variance_comparison_after, fig.cap="Wykresy pudelkowe zmiennych ciągłych po zastosowaniu standaryzacji", fig.width = 9, fig.height  = 8}
 CQL.df_scaled.longer <- CQL_df_scaled %>% pivot_longer( num.cols_CQL, values_to = "Realizacja", names_to = "Zmienna")
 
 
@@ -265,7 +265,7 @@ ggplot(CQL.df_scaled.longer, aes(y = Realizacja, fill = Zmienna)) +
 ## Badanie korelacji między zmiennymi.
 Po dokonaniu standaryzacji zmiennych ilościowych, zbadamy jeszcze, jak silne są korelacje między atrybutami w zbiorze danych. Występowanie silnej korelacji świadczy o występowaniu reduntantnych zmiennych. Taka redundancja może zostać wyelimonowana za pomocą analizy składowych głównych. Aby poprawić czytelność wykresu, nazwy zmiennych zostały pominięte, a wartość współczynnika została przeskalowana do przedzialu [0;1].
 
-```{r corr matrix, echo = FALSE, fig.cap = "Macierz korelacji dla zmiennych ciągłych"}
+```{r corr matrix, fig.cap = "Macierz korelacji dla zmiennych ciągłych"}
 corr_matrix <- abs(cor(x = CQL_df[num.cols_CQL], use = "complete.obs"))
 
 old_par <- par(no.readonly = TRUE)
@@ -282,7 +282,7 @@ Na podstawie rysunku \ref{fig:corr matrix} można zauważyć, że w zdecydowanej
 ## Wyznaczanie składowych głównych.
 Dla analizowanego zbioru zmiennych ciągłych zostanie przeprowadzona analiza głównych składowych. W jej ramach porównany zostanie rozrzut składowych oraz stopień, w jakim wyjaśniają one całkowitą wariancję danych. Na zakończenie, na podstawie skumulowanej wariancji wyjaśnianej przez kolejne składowe, wyznaczona zostanie minimalna liczba komponentów niezbędnych do osiągnięcia poziomu co najmniej 80% lub 90% całkowitej wariancji.
 
-```{r principal components computation, echo = FALSE}
+```{r principal components computation}
 prin.comp <- prcomp(x = CQL_df[num.cols_CQL], retx = TRUE) # Wyznacz składowe główne.
 
 PCA_loadings <- prin.comp$rotation # Wyznacz ładunki składowych głównych.
@@ -306,7 +306,7 @@ rotated.df_long$Składowa <- factor(x = rotated.df_long$Składowa,
 
 ```
 
-```{r PC variance visualization, echo = FALSE, fig.height =8, fig.width = 9, fig.cap = "Wykresy pudełkowe dla składowych głównych"}
+```{r PC variance visualization, fig.height =8, fig.width = 9, fig.cap = "Wykresy pudełkowe dla składowych głównych"}
 ggplot(rotated.df_long, aes(y = Wartość, fill = Składowa)) +
   geom_boxplot(position=position_dodge(1)) +
   theme(axis.text.y = element_text(angle = 45, hjust = 1),
@@ -321,7 +321,7 @@ ggplot(rotated.df_long, aes(y = Wartość, fill = Składowa)) +
 
 Mając już wyznaczone składowe główne, możemy odpowiedzieć na pytanie o minimalną liczbę komponentów niezbędnych do osiągnięcia założonej frakcji wyjaśnianej wariancji. W celu ilustracji udziału poszczególnych składowych w ogólnej wariancji danych, odwołajmy się do wykresu \ref{fig:variances explained plot}. Największe przyrosty wariancji obserwowane są dla pierwszych czterech składowych głównych, po czym tempo wzrostu wyraźnie spowalnia. W związku z tym, wstępna analiza sugeruje, iż uwzględnienie jedynie 4–6 pierwszych składowych głównych (spośród wszystkich `r ncol(PCA_rotated.df)` może być wystarczające do uzyskania satysfakcjonującego poziomu odwzorowania struktury danych.
 
-```{r variances explained plot, echo = FALSE, fig.height=8, fig.width = 9, fig.cap = "Porównanie udziału wariancji wyjaśnianej przez poszczególne składowe główne"}
+```{r variances explained plot, fig.height=8, fig.width = 9, fig.cap = "Porównanie udziału wariancji wyjaśnianej przez poszczególne składowe główne"}
 
 # Tworzymy ramkę danych zawierającą odsetek wariancji wyjaśnianej przez każdą składową główną.
 var_explained.df <- data.frame(
@@ -343,7 +343,7 @@ print(p1)
 ```
 
 
-```{r cum variances explained plot, echo = FALSE, fig.height=8, fig.width = 9, fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
+```{r cum variances explained plot, fig.height=8, fig.width = 9, fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
 
 # Tworzymy ramkę danych zawierającą skumulowaną wariancję wyjaśnianą przez kolejne składowe główne
 cum.var_explained.df <- data.frame(
@@ -376,7 +376,7 @@ Na podstawie wykresu \ref{fig:cum variances explained plot} możemy określić l
 
 ## Wizualizacja danych wielowymiarowych
 Po przeprowadzeniu redukcji wymiarowości za pomocą analizy głównych składowych (PCA), dokonano wizualizacji danych w przestrzeni wyznaczonej przez dwie pierwsze składowe, które kumulatywnie wyjaśniają największą część zmienności w zbiorze. Celem tej analizy jest identyfikacja potencjalnych struktur skupiskowych wśród obserwacji (miast) oraz wykrycie ewentualnych obserwacji odstających, które znacząco odbiegają od pozostałych pod względem analizowanych cech.
-```{r PCA visualization, echo = FALSE, fig.height = 8, fig.width = 9, fig.cap = "Porównanie udziału wariancji wyjaśnianej przez poszczególne składowe główne bez standaryzacji"}
+```{r PCA visualization, fig.height = 8, fig.width = 9, fig.cap = "Porównanie udziału wariancji wyjaśnianej przez poszczególne składowe główne bez standaryzacji"}
 
 # Dane PCA + etykiety
 PCA_data <- as.data.frame(prin.comp$x)
@@ -418,7 +418,7 @@ Drugą wyraźnie wyodrębnioną grupę stanowią miasta zlokalizowane w prawym g
 
 ## PCA bez uwzględnienia standaryzacji.
 W dalszej części analizy porównana zostanie efektywność składowych głównych wyznaczonych na podstawie niestandaryzowanych zmiennych. Celem jest ocena, czy liczba komponentów niezbędnych do osiągnięcia z góry określonego progu wyjaśnionej wariancji istotnie różni się od tej uzyskanej przy zastosowaniu analizy głównych składowych z uprzednią standaryzacją danych.
-```{r PCA variances unstd, echo = FALSE, fig.width = 9, fig.height = 6, fig.cap = "Wykresy pudełkowe dla składowych głównych bez zastosowanej standaryzacji"}
+```{r PCA variances unstd, fig.width = 9, fig.height = 6, fig.cap = "Wykresy pudełkowe dla składowych głównych bez zastosowanej standaryzacji"}
 princ.comp_unstd <- prcomp(x = CQL_df[num.cols_CQL])
 
 PCA_variances_unstd <- (princ.comp_unstd$sdev)^2
@@ -447,7 +447,7 @@ ggplot(PCA_rotated.df_longer_unstd, aes(y = Wartość, fill = Składowa)) +
 ```
 
 
-```{r cum variances explained plot unstd, echo=FALSE, fig.height = 8, fig.width = 9,fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
+```{r cum variances explained plot unstd, fig.height = 8, fig.width = 9,fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
 # Wyznacz łączna wyjaśnianą wariancję przez kolejne składowe.
 cum.var_unstd_explained.df <- data.frame(
   Łączna_wyjaśniana_wariancja = cumsum(PCA_variances_unstd) / sum(PCA_variances_unstd),  # narastająca suma wariancji
@@ -483,11 +483,6 @@ Wyniki przedstawione na wykresach \ref{fig:PCA variances unstd} oraz \ref{fig:cu
 Na podstawie przeprowadzonej analizy PCA stwierdzono, że standaryzacja zmiennych ciągłych nie wpłynęła znacząco na strukturę głównych składowych. Może to sugerować, że dane te były już wcześniej porównywalne pod względem skali. W wyniku analizy ustalono, że do zachowania 90% całkowitej wariancji wystarcza 9 spośród 17 składowych, co oznacza, że część cech może być redundantna. Uzyskane wyniki wskazują, że dane zawierają pewien poziom powtarzalności informacji, co może być wykorzystane w dalszej analizie, na przykład przez ograniczenie liczby zmiennych wejściowych w modelach predykcyjnych. Redukcja wymiarowości może przyczynić się do uproszczenia modeli, skrócenia czasu obliczeń oraz poprawy ich interpretowalności.
 
 
-
-# Skalowanie wielowymiarowe (Multidimentional Scaling (MDS))
-Wyniki przedstawione na wykresach \ref{fig:PCA variances unstd} oraz \ref{fig:cum variances explained plot unstd} wskazują, że brak standaryzacji danych nie wpływa istotnie na liczbę głównych składowych niezbędnych do osiągnięcia zadowalającego poziomu wyjaśnionej wariancji. Rozkład wariancji poszczególnych składowych nie odbiega w sposób znaczący od obserwowanego na wykresie \ref{fig:PC variance visualization}, gdzie uprzednio zastosowano standaryzację danych.
-
-
 # Skalowanie wielowymiarowe (Multidimentional Scaling (MDS))
 ```{r titanic_dataset_loading, include=FALSE}
 library(titanic)
@@ -519,7 +514,7 @@ titanic_data$Age[is.na(titanic_data$Age)] <- median(titanic_data$Age, na.rm = TR
 ```
 
 ## Redukcja wymiaru na bazie MDS
-```{r dissimilarity_matrix, echo=FALSE}
+```{r dissimilarity_matrix}
 library(cluster)
 library(reshape2)
 
@@ -534,29 +529,44 @@ gower_matrix <- as.matrix(gower_dist)
 
 ```{r mds, echo=FALSE}
 library(cluster)  
+
+mds_k <- function(k){
+  
 gower_dist <- daisy(titanic_dissim, metric = "gower")
 
-# Skalowanie MDS metryczne (k = 2)
-fit_cmd <- cmdscale(gower_dist, k = 2, eig = TRUE)
+fit_cmd <- cmdscale(gower_dist, k = k, eig = TRUE)
+
 
 # Obliczenie danych do wykresu Sheparda
 mds_distances <- dist(fit_cmd$points)
 
-# 4. diagram sheprda
 plot(as.vector(gower_dist), as.vector(mds_distances),
-     main = "Diagram Shepherda",
-     xlab = "Oryginalne odległości (Gower)",
+     main = paste("Diagram Sheparda (dla wymiaru", k, ")"),
+     xlab = "Oryginalne odległości",
      ylab = "Odległości po MDS",
      pch = 20, 
      col = "steelblue",
      cex = 0.1
-     ) 
-
+     )
 abline(0, 1, col = "red", lwd = 2, lty = 2)
-
+}
 ```
-## Wizualizacja danych
+
+```{r mds_2}
+mds_k(2)
+```
+
+```{r mds_3}
+mds_k(3)
+```
+
+Analiza diagramu Sheparda wskazuje, że skalowanie klasyczne w przestrzeni dwuwymiarowej charakteryzuje się niską jakością odwzorowania – obserwacje wykazują istotne odchylenia od linii idealnej, co świadczy o niewystarczającej dokładności odwzorowania struktur odległościowych. Zwiększenie liczby wymiarów do trzech prowadzi do zauważalnej poprawy – punkty na wykresie są znacznie bliższe linii odniesienia, co potwierdza wyższą trafność rekonstrukcji oryginalnych relacji odległościowych w przestrzeni trójwymiarowej.
+
+## Wizualizacja danych po zastosowaniu skalowania wielowymiarowego
 ```{r, echo=FALSE}
+
+library(glue)
+  
 fit_cmd <- cmdscale(gower_dist, k = 2)
 mds_df <- as.data.frame(fit_cmd)
 colnames(mds_df) <- c("Dim1", "Dim2")
@@ -568,26 +578,35 @@ ggplot(mds_df, aes(x = Dim1, y = Dim2)) +
   theme_minimal()
 
 
-mds_df$Survived <- titanic_data$Survived
-ggplot(mds_df, aes(x = Dim1, y = Dim2, color = Survived)) +
-  geom_point(alpha = 0.8, size = 2) +
-  labs(title = "MDS (k = 2): Wykres punktowy wg zmiennej 'Survived'",
-       x = "Wymiar 1", y = "Wymiar 2", color = "Survived") +
-  theme_minimal()
-
-mds_df$Sex <- titanic_data$Sex
-ggplot(mds_df, aes(x = Dim1, y = Dim2, color = Sex)) +
-  geom_point(alpha = 0.8, size = 2) +
-  labs(title = "MDS (k = 2): Wykres punktowy wg zmiennej 'Sex'",
-       x = "Wymiar 1", y = "Wymiar 2", color = "Sex") +
-  theme_minimal()
-
-mds_df$Pclass <- titanic_data$Pclass
-ggplot(mds_df, aes(x = Dim1, y = Dim2, color = Pclass)) +
-  geom_point(alpha = 0.8, size = 2) +
-  labs(title = "MDS (k = 2): Wykres punktowy wg zmiennej 'Pclass'",
-       x = "Wymiar 1", y = "Wymiar 2", color = "Pclass") +
-  theme_minimal()
-
-
+grouped_visualization <- function(var) {
+  mds_df[[var]] <- titanic_data[[var]]
+  
+  ggplot(mds_df, aes(x = Dim1, y = Dim2, color = !!sym(var))) +
+    geom_point(alpha = 0.8, size = 2) +
+    labs(
+      title = glue("MDS (k = 2): Wykres punktowy wg zmiennej '{var}'"),
+      x = "Wymiar 1",
+      y = "Wymiar 2",
+      color = var
+    ) +
+    theme_minimal()
+}
 ```
+
+
+
+```{r survived mds scatter plot}
+grouped_visualization("Survived")
+```
+
+```{r Sex mds scatter plot}
+grouped_visualization("Sex")
+```
+
+```{r Pclass mds scatter plot}
+grouped_visualization("Pclass")
+```
+
+
+
+
