@@ -113,4 +113,3 @@ liczby = as.character(1:n)
 
 napisy <- paste(wektor, liczby, sep = "")
 
-

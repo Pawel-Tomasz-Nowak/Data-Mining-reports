@@ -469,7 +469,7 @@ print(p2)
 Wyniki przedstawione na wykresach \ref{fig:PCA variances unstd} oraz \ref{fig:cum variances explained plot unstd} wskazują, że brak standaryzacji danych nie wpływa istotnie na liczbę głównych składowych niezbędnych do osiągnięcia zadowalającego poziomu wyjaśnionej wariancji. Rozkład wariancji poszczególnych składowych nie odbiega w sposób znaczący od obserwowanego na wykresie \ref{fig:PC variance visualization}, gdzie uprzednio zastosowano standaryzację danych.
 
 
-## Skalowanie wielowymiarowe (Multidimentional Scaling (MDS))
+# Skalowanie wielowymiarowe (Multidimentional Scaling (MDS))
 ```{r titanic_dataset_loading, include=FALSE}
 library(titanic)
 titanic_data <- titanic_train
@@ -489,26 +489,84 @@ titanic_data <- titanic_data %>%
   mutate(Embarked = as.factor(Embarked))
 
 # usunięcie danych identyfikujących pasażerów
-identifing <- c("PassengerId", "Name", "Ticket", "Cabin")
-titanic_data <- titanic_data %>%
-  select(-all_of(intersect(names(titanic_data), identifing)))
+identifying <- c("PassengerId", "Name", "Ticket", "Cabin")
+titanic_data <- dplyr::select(titanic_data, -dplyr::all_of(intersect(names(titanic_data), identifying)))
 
 # ponowne sprawdzenie
 str(titanic_data)
-
+colSums(is.na(titanic_data))
+titanic_data$Age[is.na(titanic_data$Age)] <- median(titanic_data$Age, na.rm = TRUE)
 ```
 
 ## Redukcja wymiaru na bazie MDS
-```{r reduction, echo=FALSE}
+```{r dissimilarity_matrix, echo=FALSE}
 library(cluster)
+library(reshape2)
 
 titanic_dissim <- titanic_data[, -1]  
 
-# Macierz odmienności
-dissim_matrix <- daisy(titanic_dissim)
+gower_dist <- daisy(titanic_dissim, metric = "gower")
 
-# Zamiana na zwykłą macierz
-dmat <- as.matrix(dissim_matrix)
+# konwersja do zwykłej macierzy
+gower_matrix <- as.matrix(gower_dist)
+```
 
+
+```{r mds, echo=FALSE}
+library(cluster)  
+gower_dist <- daisy(titanic_dissim, metric = "gower")
+
+# Skalowanie MDS metryczne (k = 2)
+fit_cmd <- cmdscale(gower_dist, k = 2, eig = TRUE)
+
+# Obliczenie danych do wykresu Sheparda
+mds_distances <- dist(fit_cmd$points)
+
+# 4. diagram sheprda
+plot(as.vector(gower_dist), as.vector(mds_distances),
+     main = "Diagram Shepherda",
+     xlab = "Oryginalne odległości (Gower)",
+     ylab = "Odległości po MDS",
+     pch = 20, 
+     col = "steelblue",
+     cex = 0.1
+     ) 
+
+abline(0, 1, col = "red", lwd = 2, lty = 2)
+
+```
+## Wizualizacja danych
+```{r, echo=FALSE}
+fit_cmd <- cmdscale(gower_dist, k = 2)
+mds_df <- as.data.frame(fit_cmd)
+colnames(mds_df) <- c("Dim1", "Dim2")
+
+ggplot(mds_df, aes(x = Dim1, y = Dim2)) +
+  geom_point(color = "black", alpha = 0.6) +
+  labs(title = "MDS (k = 2): Wykres punktowy bez grupowania",
+       x = "Wymiar 1", y = "Wymiar 2") +
+  theme_minimal()
+
+
+mds_df$Survived <- titanic_data$Survived
+ggplot(mds_df, aes(x = Dim1, y = Dim2, color = Survived)) +
+  geom_point(alpha = 0.8, size = 2) +
+  labs(title = "MDS (k = 2): Wykres punktowy wg zmiennej 'Survived'",
+       x = "Wymiar 1", y = "Wymiar 2", color = "Survived") +
+  theme_minimal()
+
+mds_df$Sex <- titanic_data$Sex
+ggplot(mds_df, aes(x = Dim1, y = Dim2, color = Sex)) +
+  geom_point(alpha = 0.8, size = 2) +
+  labs(title = "MDS (k = 2): Wykres punktowy wg zmiennej 'Sex'",
+       x = "Wymiar 1", y = "Wymiar 2", color = "Sex") +
+  theme_minimal()
+
+mds_df$Pclass <- titanic_data$Pclass
+ggplot(mds_df, aes(x = Dim1, y = Dim2, color = Pclass)) +
+  geom_point(alpha = 0.8, size = 2) +
+  labs(title = "MDS (k = 2): Wykres punktowy wg zmiennej 'Pclass'",
+       x = "Wymiar 1", y = "Wymiar 2", color = "Pclass") +
+  theme_minimal()
 
 ```
