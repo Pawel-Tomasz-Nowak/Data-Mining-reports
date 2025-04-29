@@ -485,6 +485,10 @@ Na podstawie przeprowadzonej analizy PCA stwierdzono, że standaryzacja zmiennyc
 
 
 # Skalowanie wielowymiarowe (Multidimentional Scaling (MDS))
+Wyniki przedstawione na wykresach \ref{fig:PCA variances unstd} oraz \ref{fig:cum variances explained plot unstd} wskazują, że brak standaryzacji danych nie wpływa istotnie na liczbę głównych składowych niezbędnych do osiągnięcia zadowalającego poziomu wyjaśnionej wariancji. Rozkład wariancji poszczególnych składowych nie odbiega w sposób znaczący od obserwowanego na wykresie \ref{fig:PC variance visualization}, gdzie uprzednio zastosowano standaryzację danych.
+
+
+# Skalowanie wielowymiarowe (Multidimentional Scaling (MDS))
 ```{r titanic_dataset_loading, include=FALSE}
 titanic_data <- titanic_train
 # sprawdzenie, czy typy zmiennych są poprawnie przypisane
@@ -503,16 +507,20 @@ titanic_data <- titanic_data %>%
   mutate(Embarked = as.factor(Embarked))
 
 # usunięcie danych identyfikujących pasażerów
-identifing <- c("PassengerId", "Name", "Ticket", "Cabin")
-titanic_data <- titanic_data %>%
-  select(-all_of(intersect(names(titanic_data), identifing)))
+identifying <- c("PassengerId", "Name", "Ticket", "Cabin")
+titanic_data <- dplyr::select(titanic_data, -dplyr::all_of(intersect(names(titanic_data), identifying)))
 
 # ponowne sprawdzenie
 str(titanic_data)
-
+colSums(is.na(titanic_data))
+titanic_data$Age[is.na(titanic_data$Age)] <- median(titanic_data$Age, na.rm = TRUE)
 ```
 
 ## Redukcja wymiaru na bazie MDS
+```{r dissimilarity_matrix, echo=FALSE}
+library(cluster)
+library(reshape2)
+
 ```{r reduction, echo=FALSE}
 titanic_dissim <- titanic_data[, -1]  
 
@@ -524,4 +532,3 @@ dmat <- as.matrix(dissim_matrix)
 
 
 ```
-
