@@ -23,8 +23,7 @@ lot: true
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
-knitr::opts_chunk$set(fig.pos = "H", out.extra = '', fig.align = "center",
-                      fig.width = 6, fig.height = 5)
+knitr::opts_chunk$set(fig.pos = "H", out.extra = '', fig.align = "center")
 knitr::opts_chunk$set(dev.args = list(encoding = "CP1250.ENC"))
 ```
 
@@ -449,7 +448,7 @@ ggplot(PCA_rotated.df_longer_unstd, aes(y = Wartość, fill = Składowa)) +
 ```
 
 
-```{r cum variances explained plot unstd,fig.height = 5, fig.width = 6,fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
+```{r cum variances explained plot unstd, fig.height = 5, fig.width = 6,fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
 # Wyznacz łączna wyjaśnianą wariancję przez kolejne składowe.
 cum.var_unstd_explained.df <- data.frame(
   Łączna_wyjaśniana_wariancja = cumsum(PCA_variances_unstd) / sum(PCA_variances_unstd),  # narastająca suma wariancji
@@ -549,15 +548,13 @@ abline(0, 1, col = "red", lwd = 2, lty = 2)
 }
 ```
 
-```{r mds_2, fig.cap = "Diagram Sheparda po zastosowaniu MDS dla k = 2",fig.width = 5, fig.height = 5}
-mds_k(2)
-```
 
-```{r mds_3, fig.cap = "Diagram Sheparda po zastosowaniu MDS dla k = 2",fig.height = 5, fig.width = 6}
+```{r mds_3, fig.cap = "Diagram Sheparda po zastosowaniu MDS dla k = 3",fig.height = 5, fig.width = 6}
 mds_k(3)
 ```
+W celu oceny jakości odwzorowania odległości między obiektami w niżowymiarowych przestrzeniach, zastosowano diagram Sheparda. W przypadku skalowania klasycznego (classical MDS) do przestrzeni trójwymiarowej zaobserwowano bardzo dobrą zgodność między odległościami oryginalnymi a odległościami w zredukowanej przestrzeni – punkty diagramu układają się blisko linii odniesieniam, co świadczy o wysokiej dokładności rekonstrukcji i zachowaniu struktury danych.
+Natomiast projekcja do przestrzeni dwuwymiarowej wykazała istotny spadek jakości odwzorowania. Punkty na diagramie Sheparda w tym przypadku tworzą rozproszoną chmurę, oddaloną od linii idealnej, co wskazuje na znaczne zniekształcenia oryginalnych relacji dystansowych. Takie wyniki sugerują, że reprezentacja trójwymiarowa znacznie lepiej oddaje strukturę danych niż reprezentacja dwuwymiarowa, i powinna być preferowana w dalszej analizie, jeśli interpretowalność nie wymaga dalszego uproszczenia.
 
-Analiza diagramu Sheparda wskazuje, że skalowanie klasyczne w przestrzeni dwuwymiarowej charakteryzuje się niską jakością odwzorowania – obserwacje wykazują istotne odchylenia od linii idealnej, co świadczy o niewystarczającej dokładności odwzorowania struktur odległościowych. Zwiększenie liczby wymiarów do trzech prowadzi do zauważalnej poprawy – punkty na wykresie są znacznie bliższe linii odniesienia, co potwierdza wyższą trafność rekonstrukcji oryginalnych relacji odległościowych w przestrzeni trójwymiarowej.
 
 ## Wizualizacja danych po zastosowaniu skalowania wielowymiarowego
 ```{r no_group_mds_scatterplot, fig.cap = "Wykres rozrzutu po zastosowaniu MDS dla k = 2", fig.height = 5,fig.width = 6}
