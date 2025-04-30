@@ -23,7 +23,8 @@ lot: true
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
 knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
-knitr::opts_chunk$set(fig.pos = "H", out.extra = '', fig.align = "center")
+knitr::opts_chunk$set(fig.pos = "H", out.extra = '', fig.align = "center",
+                      fig.width = 6, fig.height = 5)
 knitr::opts_chunk$set(dev.args = list(encoding = "CP1250.ENC"))
 ```
 
@@ -307,7 +308,7 @@ rotated.df_long$Składowa <- factor(x = rotated.df_long$Składowa,
 
 ```
 
-```{r PC variance visualization, fig.height =8, fig.width = 9, fig.cap = "Wykresy pudełkowe dla składowych głównych"}
+```{r PC variance visualization, fig.height =5, fig.width = 6, fig.cap = "Wykresy pudełkowe dla składowych głównych"}
 ggplot(rotated.df_long, aes(y = Wartość, fill = Składowa)) +
   geom_boxplot(position=position_dodge(1)) +
   theme(axis.text.y = element_text(angle = 45, hjust = 1),
@@ -344,7 +345,7 @@ print(p1)
 ```
 
 
-```{r cum variances explained plot, fig.height=8, fig.width = 9, fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
+```{r cum variances explained plot, fig.height=5, fig.width = 6, fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
 
 # Tworzymy ramkę danych zawierającą skumulowaną wariancję wyjaśnianą przez kolejne składowe główne
 cum.var_explained.df <- data.frame(
@@ -419,7 +420,7 @@ Drugą wyraźnie wyodrębnioną grupę stanowią miasta zlokalizowane w prawym g
 
 ## PCA bez uwzględnienia standaryzacji.
 W dalszej części analizy porównana zostanie efektywność składowych głównych wyznaczonych na podstawie niestandaryzowanych zmiennych. Celem jest ocena, czy liczba komponentów niezbędnych do osiągnięcia z góry określonego progu wyjaśnionej wariancji istotnie różni się od tej uzyskanej przy zastosowaniu analizy głównych składowych z uprzednią standaryzacją danych.
-```{r PCA variances unstd, fig.width = 9, fig.height = 6, fig.cap = "Wykresy pudełkowe dla składowych głównych bez zastosowanej standaryzacji"}
+```{r PCA variances unstd, fig.width = 6, fig.height = 5, fig.cap = "Wykresy pudełkowe dla składowych głównych bez zastosowanej standaryzacji"}
 princ.comp_unstd <- prcomp(x = CQL_df[num.cols_CQL])
 
 PCA_variances_unstd <- (princ.comp_unstd$sdev)^2
@@ -448,7 +449,7 @@ ggplot(PCA_rotated.df_longer_unstd, aes(y = Wartość, fill = Składowa)) +
 ```
 
 
-```{r cum variances explained plot unstd, fig.height = 8, fig.width = 9,fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
+```{r cum variances explained plot unstd,fig.height = 5, fig.width = 6,fig.cap = "Skumulowana wariancja wyjaśniana przez kolejne składowe główne"}
 # Wyznacz łączna wyjaśnianą wariancję przez kolejne składowe.
 cum.var_unstd_explained.df <- data.frame(
   Łączna_wyjaśniana_wariancja = cumsum(PCA_variances_unstd) / sum(PCA_variances_unstd),  # narastająca suma wariancji
@@ -548,19 +549,18 @@ abline(0, 1, col = "red", lwd = 2, lty = 2)
 }
 ```
 
-```{r mds_2}
+```{r mds_2, fig.cap = "Diagram Sheparda po zastosowaniu MDS dla k = 2",fig.width = 5, fig.height = 5}
 mds_k(2)
 ```
 
-```{r mds_3}
+```{r mds_3, fig.cap = "Diagram Sheparda po zastosowaniu MDS dla k = 2",fig.height = 5, fig.width = 6}
 mds_k(3)
 ```
 
 Analiza diagramu Sheparda wskazuje, że skalowanie klasyczne w przestrzeni dwuwymiarowej charakteryzuje się niską jakością odwzorowania – obserwacje wykazują istotne odchylenia od linii idealnej, co świadczy o niewystarczającej dokładności odwzorowania struktur odległościowych. Zwiększenie liczby wymiarów do trzech prowadzi do zauważalnej poprawy – punkty na wykresie są znacznie bliższe linii odniesienia, co potwierdza wyższą trafność rekonstrukcji oryginalnych relacji odległościowych w przestrzeni trójwymiarowej.
 
 ## Wizualizacja danych po zastosowaniu skalowania wielowymiarowego
-```{r, echo=FALSE }
-
+```{r no_group_mds_scatterplot, fig.cap = "Wykres rozrzutu po zastosowaniu MDS dla k = 2", fig.height = 5,fig.width = 6}
 library(glue)
   
 fit_cmd <- cmdscale(gower_dist, k = 2)
@@ -574,37 +574,41 @@ ggplot(mds_df, aes(x = Dim1, y = Dim2)) +
   theme_minimal()
 
 
-grouped_visualization <- function(var) {
-  mds_df[[var]] <- titanic_data[[var]]
-  
-  ggplot(mds_df, aes(x = Dim1, y = Dim2, color = !!sym(var))) +
-    geom_point(alpha = 0.8, size = 2) +
-    labs(
-      title = glue("MDS (k = 2): Wykres punktowy wg zmiennej '{var}'"),
-      x = "Wymiar 1",
-      y = "Wymiar 2",
-      color = var
-    ) +
-    theme_minimal()
+grouped_mds_scatterplot <- function(var){
+mds_df[[var]] <- titanic_data[[var]]
+
+plot <- ggplot(mds_df, aes(x = Dim1, y = Dim2, color = !!sym(var))) +
+  geom_point(alpha = 0.8, size = 2) +
+  labs(
+    title = "MDS (k = 2): Wykres rozrzutu wg zmiennej Survived",
+    x = "Wymiar 1",
+    y = "Wymiar 2",
+    color = var
+  )+
+  theme_minimal()
+
+if (var == "Survived"){
+  plot <- plot + scale_color_manual(values = c("0" = "red", "1" = "green"),
+    labels = c("0" = "Not survived", "1" = "Survived"))
+}
+print(plot)
 }
 ```
 
-
-
-```{r survived mds scatter plot}
-grouped_visualization("Survived")
+```{r survived_mds_scatterplot, fig.cap = "Wykres rozrzutu po zastosowaniu MDS dla k = 2 z grupowaniem według zmiennej 'Survived'", fig.height = 5, fig.width = 6}
+grouped_mds_scatterplot("Survived")
 ```
 
-```{r Sex mds scatter plot}
-grouped_visualization("Sex")
+```{r pclass_mds_scatterplot, fig.cap = "Wykres rozrzutu po zastosowaniu MDS dla k = 2 z grupowaniem według zmiennej 'Pclass'", fig.height = 5, fig.width = 6}
+grouped_mds_scatterplot("Pclass")
 ```
 
-```{r Pclass mds scatter plot}
-grouped_visualization("Pclass")
+```{r sex_mds_scatterplot, fig.cap = "Wykres rozrzutu po zastosowaniu MDS dla k = 2 z grupowaniem według zmiennej 'Sex'", fig.height = 5, fig.width = 6}
+grouped_mds_scatterplot("Sex")
 ```
 
-Na wykresie \ref{fig:survived mds scatter plot} widoczny jest wyraźny podział danych na dwa skupiska. Po oznaczeniu przynależności poszczególnych obserwacji do grup odpowiadających wartościom zmiennej **Survived**, można zauważyć, że w górnym skupisku dominują osoby, które przeżyły (**Survived** == 1), natomiast w dolnym – osoby, które nie przeżyły (**Survived** == 0). Na wykresie można dostrzec kilka punktów oddalonych od głównych skupisk, np. pojedyncze punkty znajdujące się po lewej stronie wykresu lub w dolnej części, z dala od skoncentrowanych grup. Są to obserwacje odstające, które mogą reprezentować osoby o nietypowym zestawie cech (np. bardzo młody wiek, nietypowa kombinacja klasy i płci) lub wskazywać na błędy danych lub wyjątkowe przypadki. Cechy użyte do analizy MDS w pewnym stopniu odzwierciedlają różnice związane z przeżyciem, choć nie jest to rozdział idealny – kolory są częściowo wymieszane w niektórych skupiskach.
-Po uwzględnieniu podziału według płci \ref{fig:Sex mds scatter plot} widać, że wśród osób ocalałych największą grupę stanowią kobiety. Dalsza analiza z uwzględnieniem klasy podróży \ref{fig:Pclass mds scatter plot} (zmienna **Pclass**) pokazuje, że wśród kobiet, które przeżyły, zdecydowaną większość stanowią pasażerki podróżujące pierwszą klasą.
+Na wykresie \ref{fig:survived_mds_scatterplot} widoczny jest wyraźny podział danych na dwa skupiska. Po oznaczeniu przynależności poszczególnych obserwacji do grup odpowiadających wartościom zmiennej **Survived**, można zauważyć, że w górnym skupisku dominują osoby, które przeżyły (**Survived** == 1), natomiast w dolnym – osoby, które nie przeżyły (**Survived** == 0). Na wykresie można dostrzec kilka punktów oddalonych od głównych skupisk, np. pojedyncze punkty znajdujące się po lewej stronie wykresu lub w dolnej części, z dala od skoncentrowanych grup. Są to obserwacje odstające, które mogą reprezentować osoby o nietypowym zestawie cech (np. bardzo młody wiek, nietypowa kombinacja klasy i płci) lub wskazywać na błędy danych lub wyjątkowe przypadki. Cechy użyte do analizy MDS w pewnym stopniu odzwierciedlają różnice związane z przeżyciem, choć nie jest to rozdział idealny – kolory są częściowo wymieszane w niektórych skupiskach.
+Po uwzględnieniu podziału według płci \ref{fig:sex_mds_scatterplot} widać, że wśród osób ocalałych największą grupę stanowią kobiety. Dalsza analiza z uwzględnieniem klasy podróży \ref{fig:pclass_mds_scatterplot} (zmienna **Pclass**) pokazuje, że wśród kobiet, które przeżyły, zdecydowaną większość stanowią pasażerki podróżujące pierwszą klasą.
 W przypadku mężczyzn natomiast klasa podróży nie miała istotnego wpływu na przeżywalność – liczba ocalałych była zbliżona niezależnie od klasy.
 
 
