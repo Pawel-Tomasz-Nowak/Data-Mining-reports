@@ -43,6 +43,7 @@ library(ggrepel)
 library(xtable)
 library(titanic)
 library(cluster)
+library(reshape2)
 
 ```
 
@@ -515,9 +516,6 @@ titanic_data$Age[is.na(titanic_data$Age)] <- median(titanic_data$Age, na.rm = TR
 
 ## Redukcja wymiaru na bazie MDS
 ```{r dissimilarity_matrix}
-library(cluster)
-library(reshape2)
-
 titanic_dissim <- titanic_data[, -1]  
 
 gower_dist <- daisy(titanic_dissim, metric = "gower")
@@ -528,8 +526,6 @@ gower_matrix <- as.matrix(gower_dist)
 
 
 ```{r mds, echo=FALSE}
-library(cluster)  
-
 mds_k <- function(k){
   
 gower_dist <- daisy(titanic_dissim, metric = "gower")
@@ -563,7 +559,7 @@ mds_k(3)
 Analiza diagramu Sheparda wskazuje, że skalowanie klasyczne w przestrzeni dwuwymiarowej charakteryzuje się niską jakością odwzorowania – obserwacje wykazują istotne odchylenia od linii idealnej, co świadczy o niewystarczającej dokładności odwzorowania struktur odległościowych. Zwiększenie liczby wymiarów do trzech prowadzi do zauważalnej poprawy – punkty na wykresie są znacznie bliższe linii odniesienia, co potwierdza wyższą trafność rekonstrukcji oryginalnych relacji odległościowych w przestrzeni trójwymiarowej.
 
 ## Wizualizacja danych po zastosowaniu skalowania wielowymiarowego
-```{r, echo=FALSE}
+```{r, echo=FALSE }
 
 library(glue)
   
@@ -607,6 +603,11 @@ grouped_visualization("Sex")
 grouped_visualization("Pclass")
 ```
 
+Na wykresie \ref{fig:survived mds scatter plot} widoczny jest wyraźny podział danych na dwa skupiska. Po oznaczeniu przynależności poszczególnych obserwacji do grup odpowiadających wartościom zmiennej **Survived**, można zauważyć, że w górnym skupisku dominują osoby, które przeżyły (**Survived** == 1), natomiast w dolnym – osoby, które nie przeżyły (**Survived** == 0). Na wykresie można dostrzec kilka punktów oddalonych od głównych skupisk, np. pojedyncze punkty znajdujące się po lewej stronie wykresu lub w dolnej części, z dala od skoncentrowanych grup. Są to obserwacje odstające, które mogą reprezentować osoby o nietypowym zestawie cech (np. bardzo młody wiek, nietypowa kombinacja klasy i płci) lub wskazywać na błędy danych lub wyjątkowe przypadki. Cechy użyte do analizy MDS w pewnym stopniu odzwierciedlają różnice związane z przeżyciem, choć nie jest to rozdział idealny – kolory są częściowo wymieszane w niektórych skupiskach.
+Po uwzględnieniu podziału według płci \ref{fig:Sex mds scatter plot} widać, że wśród osób ocalałych największą grupę stanowią kobiety. Dalsza analiza z uwzględnieniem klasy podróży \ref{fig:Pclass mds scatter plot} (zmienna **Pclass**) pokazuje, że wśród kobiet, które przeżyły, zdecydowaną większość stanowią pasażerki podróżujące pierwszą klasą.
+W przypadku mężczyzn natomiast klasa podróży nie miała istotnego wpływu na przeżywalność – liczba ocalałych była zbliżona niezależnie od klasy.
 
+
+   
 
 
