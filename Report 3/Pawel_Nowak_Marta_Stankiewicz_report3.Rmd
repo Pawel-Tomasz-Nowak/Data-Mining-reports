@@ -1,0 +1,21 @@
+---
+title: "Sprawozdanie z listy 3"
+subtitle: "Eksploracja danych"
+author: "Marta Stankiewicz (282244)  \n Paweł Nowak (282223)"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[OT4]{polski}
+   - \usepackage[utf8]{inputenc}
+   - \usepackage{graphicx}
+   - \usepackage{float}
+output: 
+  pdf_document:
+    toc: true
+    fig_caption: true
+    fig_width: 5 
+    fig_height: 4 
+    number_sections: true
+fontsize: 12pt 
+lof: true
+lot: true
+---
