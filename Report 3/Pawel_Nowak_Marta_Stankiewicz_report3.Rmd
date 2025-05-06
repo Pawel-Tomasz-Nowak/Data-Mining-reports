@@ -23,24 +23,25 @@ lot: true
 ---
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
-knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
-knitr::opts_chunk$set(fig.pos = "H", out.extra = '', fig.align = "center")
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, include = FALSE) 
+knitr::opts_chunk$set(fig.pos = "H", out.extra = '', fig.align = "center",
+                      fig.height = 4, fig.width =6)
 knitr::opts_chunk$set(dev.args = list(encoding = "CP1250.ENC"))
 
 ```
 
-
-```{r, iris df loading, }
+```{r libraries importing}
+# Import necessary librarries
 library("datasets")
-
-iris_df <- iris
-
-print(head(iris_df))
+library("caret")
+library("reshape2")
 ```
 
-
+```{r, iris df loading, }
+iris_df <- iris
+```
 ```{r iris df splitting}
-split_ratio <- 0.8
+split_ratio <- 0.6
 
 train_indices <- sample(seq_len(nrow(iris_df)), size = split_ratio * nrow(iris_df))
 
@@ -49,8 +50,8 @@ test_data  <- iris_df[-train_indices, ]
 ```
 
 
-
-
+# Klasyfikacja na bazie modelu regresji liniowej
+Aby ocenić skuteczność klasyfikatora opartego na modelu regresji liniowej, wykorzystamy zbiór danych iris, w którym zmienną objaśnianą jest Species, zawierająca `r length(unique(iris_df$Species))` unikalnych klas. W celu uniknięcia problemu wycieku danych (ang. data leakage), przeprowadzimy podział oryginalnego zbioru na zbiór treningowy oraz zbiór testowy, przy czym zbiory te będą zawierały odpowiednio `r round(100*split_ratio,0)` obserwacji z danych iris. Po wytrenowaniu modelu na danych treningowych, przeprowadzimy ewaluację jego skuteczności na podstawie zbioru testowego. Wyniki klasyfikacji zaprezentujemy za pomocą znormalizowanej macierzy pomyłek, w której wartości w każdej kolumnie zostaną podzielone przez sumę elementów tej kolumny, co pozwoli na lepszą interpretację skuteczności klasyfikacji dla poszczególnych klas.
 
 ```{r iris df linear regression bulding}
 # Extract class labels
@@ -78,10 +79,65 @@ predict_multiclass <- function(data, models) {
   return(predicted_classes)
 }
 
-# Predict on test data
-predicted_classes <- predict_multiclass(test_data, models)
-
-test_data$Predicted.Species <- predicted_classes
-print(head(test_data))
 ```
 
+```{r iris df linear regression predicting}
+# Predict ondata
+predicted.classes <- predict_multiclass(iris_df, models)
+
+iris_df$Predicted.Species <- predicted.classes
+```
+
+
+```{r confussion matrix for training samples, fig.cap = "Confusion matrix of Linear Regression for training samples", include = TRUE}
+# Find the true labels
+G <- iris_df[train_indices, "Species"]
+
+# Find the predicted labels
+G.hat <- predicted.classes[train_indices]
+
+# Create a confussion matrix
+conf.matrix <- confusionMatrix(data = G.hat, reference = G)$table
+
+# Normalize the matrix by columns and melt the matrix
+conf.matrix <- melt(prop.table(conf.matrix, margin = 2))
+
+# Rename the columns of the matrix
+colnames(conf.matrix) <- c("Predicted.label", "True.label", "Precision")
+
+
+# Plot the confussion matrix as heatmap
+ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(Precision, 2)), size = 4) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Confusion matrix of the linear regression",
+       x = "Predicted Class", y = "True Class", fill = "Precision") +
+  theme_minimal()
+```
+```{r confussion matrix for testing samples, fig.cap = "Confusion matrix of Linear Regression for testing samples", include = TRUE}
+# Find the true labels
+G <- iris_df[-train_indices, "Species"]
+
+# Find the predicted labels
+G.hat <- predicted.classes[-train_indices]
+
+# Create a confussion matrix
+conf.matrix <- confusionMatrix(data = G.hat, reference = G)$table
+
+# Normalize the matrix by columns and melt the matrix
+conf.matrix <- melt(prop.table(conf.matrix, margin = 2))
+
+# Rename the columns of the matrix
+colnames(conf.matrix) <- c("Predicted.label", "True.label", "Precision")
+
+
+# Plot the confussion matrix as heatmap
+ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(Precision, 2)), size = 4) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Confusion matrix of the linear regression",
+       x = "Predicted Class", y = "True Class", fill = "Precision") +
+  theme_minimal()
+```
