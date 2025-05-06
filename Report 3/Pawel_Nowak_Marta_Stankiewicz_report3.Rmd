@@ -18,4 +18,70 @@ output:
 fontsize: 12pt 
 lof: true
 lot: true
+
+
 ---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE) 
+knitr::opts_chunk$set(fig.pos = "H", out.extra = '', fig.align = "center")
+knitr::opts_chunk$set(dev.args = list(encoding = "CP1250.ENC"))
+
+```
+
+
+```{r, iris df loading, }
+library("datasets")
+
+iris_df <- iris
+
+print(head(iris_df))
+```
+
+
+```{r iris df splitting}
+split_ratio <- 0.8
+
+train_indices <- sample(seq_len(nrow(iris_df)), size = split_ratio * nrow(iris_df))
+
+train_data <- iris_df[train_indices, ]
+test_data  <- iris_df[-train_indices, ]
+```
+
+
+
+
+
+```{r iris df linear regression bulding}
+# Extract class labels
+classes <- unique(iris_df$Species)
+
+# Function to fit one-vs-rest linear regression model for a given class
+model_fitter <- function(train_data, cls) {
+  binary_response <- ifelse(train_data$Species == cls, 1, 0)
+  lm(binary_response ~ Sepal.Length + Sepal.Width + Petal.Length + Petal.Width,
+     data = train_data)
+}
+
+# Train a model for each class
+models <- lapply(classes, function(cls) model_fitter(train_data, cls))
+
+# Function to predict class with the highest predicted value
+predict_multiclass <- function(data, models) {
+  preds <- sapply(models, function(model) predict(model, newdata = data))
+  preds <- as.matrix(preds)
+  colnames(preds) <- classes
+  
+  max_indices <- apply(preds, 1, which.max)
+  predicted_classes <- factor(classes[max_indices], levels = classes)
+  
+  return(predicted_classes)
+}
+
+# Predict on test data
+predicted_classes <- predict_multiclass(test_data, models)
+
+test_data$Predicted.Species <- predicted_classes
+print(head(test_data))
+```
+
