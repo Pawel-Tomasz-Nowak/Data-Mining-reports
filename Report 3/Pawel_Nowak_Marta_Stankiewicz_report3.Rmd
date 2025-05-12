@@ -118,7 +118,7 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
   theme_minimal()
 ```
 ## Analiza skuteczności klasyfikacji dla zbioru treningowego
-
+<!-- # Odwołania nie działają znowu xD -->
 Na podstawie macierzy pomyłek przedstawionej na Rysunku \ref{fig:Macierz pomyłek regresji liniowej dla obserwacji treningowych}, przyjrzeliśmy się, jak dobrze klasyfikator oparty na regresji liniowej radzi sobie z przewidywaniem poszczególnych klas. Zauważyliśmy, że skuteczność tych przewidywań różni się w zależności od tego, do której klasy należą próbki treningowe.
 Najlepiej klasyfikator poradził sobie z klasą setosa oraz virginica - dla obu tych klas precyzja wyniosła ponad 92%. To pokazuje, że model bardzo dobrze rozpoznaje te dwie klasy w zbiorze treningowym i rzadko się myli, przypisując im inne próbki.
 Jednak w przypadku klasy versicolor skuteczność przewidywania wyraźnie spadła, osiągając tylko 71% precyzji. To sugeruje, że klasyfikator ma większy problem z prawidłowym rozpoznawaniem próbek należących do tej klasy.
@@ -158,6 +158,7 @@ p1 <- ggplot(combined_df, aes(x = !!sym(predictor), y = Y, color = Class)) +
        color = "Class") # Etykieta legendy 
 print(p1)
 ```
+<!-- # Odwołania nie działają znowu xDD -->
 Analiza przedstawionych na rysunku \ref{fig:Krzywe regresji liniowej dla różnych gatunków kwiatów} prostych regresji liniowych ujawnia problem maskowania klas w odniesieniu do kategorii 'Versicolor'. W obszarze niskich wartości predyktora `r predictor`, charakteryzujących się największym prawdopodobieństwem obserwacji, krzywa regresji odpowiadająca gatunkowi Iris versicolor przebiega pomiędzy krzywymi pozostałych klas. Taka konfiguracja przestrzenna implikuje, iż w zakresie wspomnianych wartości predyktora, klasyfikator oparty na bezpośrednim porównaniu wartości regresji liniowej może systematycznie pomijać przynależność obserwacji do klasy 'Versicolor', prowadząc do potencjalnych błędów klasyfikacji.
 
 ## Analiza skuteczności klasyfikacji dla zbioru testowego
@@ -188,3 +189,17 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
   theme_minimal()
 ```
 Podobne wnioski można wyciągnąć z oceny skuteczności modelu regresji na zbiorze testowym, co ilustruje macierz pomyłek na rysunku \ref{fig:Macierz pomyłek regresji liniowej dla obserwacji testowych}. Klasa 'versicolor' wykazuje relatywnie wysoką częstotliwość błędnych klasyfikacji, co jest prawdopodobnie konsekwencją wspomnianego problemu maskowania klas.
+
+# Klasyfikacja na bazie modelu regresji liniowej z czynnikami wielomianowymi
+Trudności związane z maskowaniem klas znacząco utrudniają stworzenie efektywnego klasyfikatora opartego na modelu regresji liniowej. W celu zminimalizowania tego problemu i poprawy jakości klasyfikacji, wykorzystamy predyktory do wygenerowania czynników wielomianowych, czyli wyrażeń w formie: ...
+$$
+\begin{aligned}
+& X_{1}^{t_{1}} X_{2}^{t_{2}} \dots X_{p}^{t_{p}}, \\
+& \text{gdzie } \sum_{i=1}^{p} t_{i} = 2 \quad \text{oraz} \quad \forall i \in \{1, \dots, p\} \quad t_{i} \geq 0
+\end{aligned}
+$$
+```{r, polynomial terms creating}
+colnames(iris_df)[1:4] = c("SL", "SW", "PL", "PW")
+
+iris_df
+```
