@@ -5,3 +5,4 @@ print(macierz)
 
 
 print(apply(macierz, 1, which.max))
+

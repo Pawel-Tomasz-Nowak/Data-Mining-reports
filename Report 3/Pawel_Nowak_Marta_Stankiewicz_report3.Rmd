@@ -41,7 +41,7 @@ library("reshape2")
 iris_df <- iris
 ```
 ```{r iris df splitting}
-split_ratio <- 0.6
+split_ratio <- 0.7
 
 train_indices <- sample(seq_len(nrow(iris_df)), size = split_ratio * nrow(iris_df))
 
@@ -56,6 +56,8 @@ Aby ocenić skuteczność klasyfikatora opartego na modelu regresji liniowej, wy
 ```{r iris df linear regression bulding}
 # Extract class labels
 classes <- unique(iris_df$Species)
+
+predictors <- c("Sepal.Length","Sepal.Width", "Petal.Length", "Petal.Width")
 
 # Function to fit one-vs-rest linear regression model for a given class
 model_fitter <- function(train_data, cls) {
@@ -89,7 +91,7 @@ iris_df$Predicted.Species <- predicted.classes
 ```
 
 
-```{r confussion matrix for training samples, fig.cap = "Confusion matrix of Linear Regression for training samples", include = TRUE}
+```{r confussion matrix for training samples, fig.cap = "Macierz pomyłek regresji liniowej dla obserwacji treningowych", include = TRUE}
 # Find the true labels
 G <- iris_df[train_indices, "Species"]
 
@@ -111,11 +113,55 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
   geom_tile(color = "white") +
   geom_text(aes(label = round(Precision, 2)), size = 4) +
   scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(title = "Confusion matrix of the linear regression",
+  labs(title = "Confusion matrix of the linear regression (traing samples)",
        x = "Predicted Class", y = "True Class", fill = "Precision") +
   theme_minimal()
 ```
-```{r confussion matrix for testing samples, fig.cap = "Confusion matrix of Linear Regression for testing samples", include = TRUE}
+## Analiza skuteczności klasyfikacji dla zbioru treningowego
+
+Na podstawie macierzy pomyłek przedstawionej na Rysunku \ref{fig:Macierz pomyłek regresji liniowej dla obserwacji treningowych}, przyjrzeliśmy się, jak dobrze klasyfikator oparty na regresji liniowej radzi sobie z przewidywaniem poszczególnych klas. Zauważyliśmy, że skuteczność tych przewidywań różni się w zależności od tego, do której klasy należą próbki treningowe.
+Najlepiej klasyfikator poradził sobie z klasą setosa oraz virginica - dla obu tych klas precyzja wyniosła ponad 92%. To pokazuje, że model bardzo dobrze rozpoznaje te dwie klasy w zbiorze treningowym i rzadko się myli, przypisując im inne próbki.
+Jednak w przypadku klasy versicolor skuteczność przewidywania wyraźnie spadła, osiągając tylko 71% precyzji. To sugeruje, że klasyfikator ma większy problem z prawidłowym rozpoznawaniem próbek należących do tej klasy.
+Możemy przypuszczać, że powodem gorszych wyników dla gatunku versicolor jest tak zwany problem maskowania klasy (class masking problem). Chodzi o to, że cechy charakterystyczne dla klasy versicolor mogą być podobne do cech innych klas, co utrudnia modelowi regresji liniowej jednoznaczne przypisanie próbek do właściwej kategorii. Aby sprawdzić, czy tak jest, przeanalizujemy teraz kolejny wykres.
+
+```{r linreg plots}
+library(ggplot2)
+library(rlang)
+library(dplyr)
+
+create_linreg_data <- function(class, predictor = "Sepal.Length"){
+  class_idx <- which(classes == class)
+  model_do_wykresu <- models[[class_idx]] # Pobiera model dla danej klasy
+  wspolczynniki <- coef(model_do_wykresu)  # Pobiera współczynniki modelu
+  
+  przewidywane_wartosci <- wspolczynniki[1]  + wspolczynniki[predictor] * train_data[[predictor]] # Oblicza przewidywane wartości
+  wartosci_regresji <- data.frame("X" = train_data[[predictor]], # Tworzy ramkę danych
+                                   "Y" = przewidywane_wartosci,
+                                   "Class" = class)
+  colnames(wartosci_regresji) = c(predictor, "Y", "Class") # Ustawia nazwy kolumn
+  return(wartosci_regresji)
+}
+```
+
+```{r, class masking problem, fig.cap = "Krzywe regresji liniowej dla różnych gatunków kwiatów", include = TRUE}
+predictor <- "Sepal.Width" # Wybiera predyktor
+
+dfs <- lapply(classes, function(x) {create_linreg_data(x, predictor)}) # Tworzy listę ramek danych
+combined_df <- bind_rows(dfs) # Łączy ramki danych
+
+# Tworzy wykres liniowy
+p1 <- ggplot(combined_df, aes(x = !!sym(predictor), y = Y, color = Class)) +
+  geom_line(size = 1) +
+  labs(title = "Krzywe regresji liniowej dla różnych gatunków kwiatów",
+       x = gsub("\\.", " ", predictor), # Etykieta osi X
+       y = "Prognoza", # Etykieta osi Y
+       color = "Class") # Etykieta legendy 
+print(p1)
+```
+Analiza przedstawionych na rysunku \ref{fig:Krzywe regresji liniowej dla różnych gatunków kwiatów} prostych regresji liniowych ujawnia problem maskowania klas w odniesieniu do kategorii 'Versicolor'. W obszarze niskich wartości predyktora `r predictor`, charakteryzujących się największym prawdopodobieństwem obserwacji, krzywa regresji odpowiadająca gatunkowi Iris versicolor przebiega pomiędzy krzywymi pozostałych klas. Taka konfiguracja przestrzenna implikuje, iż w zakresie wspomnianych wartości predyktora, klasyfikator oparty na bezpośrednim porównaniu wartości regresji liniowej może systematycznie pomijać przynależność obserwacji do klasy 'Versicolor', prowadząc do potencjalnych błędów klasyfikacji.
+
+## Analiza skuteczności klasyfikacji dla zbioru testowego
+```{r confussion matrix for testing samples, fig.cap = "Macierz pomyłek regresji liniowej dla obserwacji testowych", include = TRUE}
 # Find the true labels
 G <- iris_df[-train_indices, "Species"]
 
@@ -137,7 +183,8 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
   geom_tile(color = "white") +
   geom_text(aes(label = round(Precision, 2)), size = 4) +
   scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(title = "Confusion matrix of the linear regression",
+  labs(title = "Confusion matrix of the linear regression (testing samples)",
        x = "Predicted Class", y = "True Class", fill = "Precision") +
   theme_minimal()
 ```
+Podobne wnioski można wyciągnąć z oceny skuteczności modelu regresji na zbiorze testowym, co ilustruje macierz pomyłek na rysunku \ref{fig:Macierz pomyłek regresji liniowej dla obserwacji testowych}. Klasa 'versicolor' wykazuje relatywnie wysoką częstotliwość błędnych klasyfikacji, co jest prawdopodobnie konsekwencją wspomnianego problemu maskowania klas.
