@@ -116,6 +116,7 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
   labs(title = "Confusion matrix of the linear regression (traing samples)",
        x = "Predicted Class", y = "True Class", fill = "Precision") +
   theme_minimal()
+
 ```
 ## Analiza skuteczności klasyfikacji dla zbioru treningowego
 <!-- # Odwołania nie działają znowu xD -->
@@ -198,8 +199,118 @@ $$
 & \text{gdzie } \sum_{i=1}^{p} t_{i} = 2 \quad \text{oraz} \quad \forall i \in \{1, \dots, p\} \quad t_{i} \geq 0
 \end{aligned}
 $$
-```{r, polynomial terms creating}
-colnames(iris_df)[1:4] = c("SL", "SW", "PL", "PW")
+```{r, polynomial features creating}
 
-iris_df
+# Creating the polynomial features
+iris_df$Sepal.Length2 <- iris_df$Sepal.Length^2
+iris_df$Sepal.Width2 <- iris_df$Sepal.Width^2
+iris_df$Petal.Length2 <- iris_df$Petal.Length^2
+iris_df$Petal.Width2 <- iris_df$Petal.Width^2
+
+iris_df$Sepal.Length_Sepal.Width <- iris_df$Sepal.Length * iris_df$Sepal.Width
+iris_df$Sepal.Length_Petal.Length <- iris_df$Sepal.Length * iris_df$Petal.Length
+iris_df$Sepal.Length_Petal.Width <- iris_df$Sepal.Length * iris_df$Petal.Width
+iris_df$Sepal.Width_Petal.Length <- iris_df$Sepal.Width * iris_df$Petal.Length
+iris_df$Sepal.Width_Petal.Width <- iris_df$Sepal.Width * iris_df$Petal.Width
+iris_df$Petal.Length_Petal.Width <- iris_df$Petal.Length * iris_df$Petal.Width
+
 ```
+
+```{r, poly iris df splitting}
+train_indices <- sample(seq_len(nrow(iris_df)), size = split_ratio * nrow(iris_df))
+
+iris_df <-   iris_df %>% mutate(Predicted.Species = NULL)
+
+train_data <- iris_df[train_indices, ]
+test_data <- iris_df[-train_indices, ]
+
+```
+
+```{r, poly linear regression building}
+# Train a model for each class
+
+# Function to fit one-vs-rest linear regression model for a given class
+
+
+model_fitter <- function(train_data, cls) {
+  binary_response <- ifelse(train_data$Species == cls, 1, 0)
+  lm(binary_response ~ ., data = train_data[, names(train_data) != "Species"])
+}
+
+models <- lapply(classes, function(cls) model_fitter(train_data, cls))
+
+
+```
+
+```{r iris df poly linear regression predicting}
+# Predict on data
+predicted.classes <- predict_multiclass(iris_df, models)
+
+iris_df$Predicted.Species <- predicted.classes
+
+```
+
+
+```{r confussion matrix for training samples with polynomial features, fig.cap = "Macierz pomyłek regresji liniowej z cechami wielomianowymi", include = TRUE}
+# Find the true labels
+G <- iris_df[train_indices, "Species"]
+
+# Find the predicted labels
+G.hat <- predicted.classes[train_indices]
+
+# Create a confussion matrix
+conf.matrix <- confusionMatrix(data = G.hat, reference = G)$table
+
+# Normalize the matrix by columns and melt the matrix
+conf.matrix <- melt(prop.table(conf.matrix, margin = 2))
+
+# Rename the columns of the matrix
+colnames(conf.matrix) <- c("Predicted.label", "True.label", "Precision")
+
+
+# Plot the confussion matrix as heatmap
+ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(Precision, 2)), size = 4) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Confusion matrix of the linear regression \n (with polynomial features)",
+       x = "Predicted Class", y = "True Class", fill = "Precision") +
+  theme_minimal()
+
+```
+
+
+
+```{r confussion matrix for testing samples with polynonomial features, fig.cap = "Macierz pomyłek regresji liniowej z cechami wielomianowymi", include = TRUE}
+# Find the true labels
+G <- iris_df[-train_indices, "Species"]
+
+# Find the predicted labels
+G.hat <- predicted.classes[-train_indices]
+
+# Create a confussion matrix
+conf.matrix <- confusionMatrix(data = G.hat, reference = G)$table
+
+# Normalize the matrix by columns and melt the matrix
+conf.matrix <- melt(prop.table(conf.matrix, margin = 2))
+
+# Rename the columns of the matrix
+colnames(conf.matrix) <- c("Predicted.label", "True.label", "Precision")
+
+
+# Plot the confussion matrix as heatmap
+ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(Precision, 2)), size = 4) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Confusion matrix of the linear regression \n (with polynomial features)",
+       x = "Predicted Class", y = "True Class", fill = "Precision") +
+  theme_minimal()
+
+```
+## Wnioski
+Analiza map cieplnych macierzy pomyłek wykazała znaczącą poprawę skuteczności klasyfikacji po zastosowaniu modelu regresji liniowej z uwzględnieniem cech wielomianowych. W odróżnieniu od modelu bazowego, w którym zaobserwowano problem maskowania klasy oraz niską skuteczność klasyfikacji próbek należących do klasy 'versicolor', rozszerzony model z cechami wielomianowymi charakteryzuje się niemal całkowitym wyeliminowaniem tych niekorzystnych zjawisk.
+
+Wykresy macierzy pomyłek jednoznacznie wskazują, że wprowadzenie czynników wielomianowych przyczyniło się do lepszego rozdzielenia przestrzeni cech, co w konsekwencji umożliwiło modelowi regresji liniowej dokładniejsze przypisanie próbek do właściwych klas. Zanik "pomijania" klasy 'versicolor' oraz ogólnie wyższa koncentracja wartości na głównej diagonali macierzy pomyłek dla modelu z cechami wielomianowymi stanowią silne argumenty przemawiające za istotnością rozszerzenia zestawu cech o komponenty wielomianowe.
+
+Na podstawie przeprowadzonych obserwacji można zatem wnioskować, że dodanie czynników wielomianowych do modelu regresji liniowej jest uzasadnione i korzystnie wpływa na zdolności klasyfikacyjne modelu w analizowanym problemie. Rozszerzenie przestrzeni cech o interakcje i potęgi oryginalnych cech dostarcza modelowi dodatkowych informacji, które pozwalają na tworzenie bardziej złożonych i dokładnych granic decyzyjnych między klasami.
