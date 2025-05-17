@@ -32,9 +32,13 @@ knitr::opts_chunk$set(dev.args = list(encoding = "CP1250.ENC"))
 
 ```{r libraries importing}
 # Import necessary librarries
-library("datasets")
-library("caret")
-library("reshape2")
+library(datasets)
+library(caret)
+library(reshape2)
+library(ggplot2)
+library(rlang)
+library(dplyr)
+library(tidyr)
 ```
 
 ```{r, iris df loading, }
@@ -74,10 +78,10 @@ predict_multiclass <- function(data, models) {
   preds <- sapply(models, function(model) predict(model, newdata = data))
   preds <- as.matrix(preds)
   colnames(preds) <- classes
-  
+
   max_indices <- apply(preds, 1, which.max)
   predicted_classes <- factor(classes[max_indices], levels = classes)
-  
+
   return(predicted_classes)
 }
 
@@ -119,22 +123,17 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
 
 ```
 ## Analiza skuteczności klasyfikacji dla zbioru treningowego
-<!-- # Odwołania nie działają znowu xD -->
-Na podstawie macierzy pomyłek przedstawionej na Rysunku \ref{fig:Macierz pomyłek regresji liniowej dla obserwacji treningowych}, przyjrzeliśmy się, jak dobrze klasyfikator oparty na regresji liniowej radzi sobie z przewidywaniem poszczególnych klas. Zauważyliśmy, że skuteczność tych przewidywań różni się w zależności od tego, do której klasy należą próbki treningowe.
+Na podstawie macierzy pomyłek przedstawionej na Rysunku \ref{fig:confussion matrix for training samples}, przyjrzeliśmy się, jak dobrze klasyfikator oparty na regresji liniowej radzi sobie z przewidywaniem poszczególnych klas. Zauważyliśmy, że skuteczność tych przewidywań różni się w zależności od tego, do której klasy należą próbki treningowe.
 Najlepiej klasyfikator poradził sobie z klasą setosa oraz virginica - dla obu tych klas precyzja wyniosła ponad 92%. To pokazuje, że model bardzo dobrze rozpoznaje te dwie klasy w zbiorze treningowym i rzadko się myli, przypisując im inne próbki.
 Jednak w przypadku klasy versicolor skuteczność przewidywania wyraźnie spadła, osiągając tylko 71% precyzji. To sugeruje, że klasyfikator ma większy problem z prawidłowym rozpoznawaniem próbek należących do tej klasy.
 Możemy przypuszczać, że powodem gorszych wyników dla gatunku versicolor jest tak zwany problem maskowania klasy (class masking problem). Chodzi o to, że cechy charakterystyczne dla klasy versicolor mogą być podobne do cech innych klas, co utrudnia modelowi regresji liniowej jednoznaczne przypisanie próbek do właściwej kategorii. Aby sprawdzić, czy tak jest, przeanalizujemy teraz kolejny wykres.
 
 ```{r linreg plots}
-library(ggplot2)
-library(rlang)
-library(dplyr)
-
 create_linreg_data <- function(class, predictor = "Sepal.Length"){
   class_idx <- which(classes == class)
   model_do_wykresu <- models[[class_idx]] # Pobiera model dla danej klasy
   wspolczynniki <- coef(model_do_wykresu)  # Pobiera współczynniki modelu
-  
+
   przewidywane_wartosci <- wspolczynniki[1]  + wspolczynniki[predictor] * train_data[[predictor]] # Oblicza przewidywane wartości
   wartosci_regresji <- data.frame("X" = train_data[[predictor]], # Tworzy ramkę danych
                                    "Y" = przewidywane_wartosci,
@@ -156,11 +155,10 @@ p1 <- ggplot(combined_df, aes(x = !!sym(predictor), y = Y, color = Class)) +
   labs(title = "Krzywe regresji liniowej dla różnych gatunków kwiatów",
        x = gsub("\\.", " ", predictor), # Etykieta osi X
        y = "Prognoza", # Etykieta osi Y
-       color = "Class") # Etykieta legendy 
+       color = "Class") # Etykieta legendy
 print(p1)
 ```
-<!-- # Odwołania nie działają znowu xDD -->
-Analiza przedstawionych na rysunku \ref{fig:Krzywe regresji liniowej dla różnych gatunków kwiatów} prostych regresji liniowych ujawnia problem maskowania klas w odniesieniu do kategorii 'Versicolor'. W obszarze niskich wartości predyktora `r predictor`, charakteryzujących się największym prawdopodobieństwem obserwacji, krzywa regresji odpowiadająca gatunkowi Iris versicolor przebiega pomiędzy krzywymi pozostałych klas. Taka konfiguracja przestrzenna implikuje, iż w zakresie wspomnianych wartości predyktora, klasyfikator oparty na bezpośrednim porównaniu wartości regresji liniowej może systematycznie pomijać przynależność obserwacji do klasy 'Versicolor', prowadząc do potencjalnych błędów klasyfikacji.
+Analiza przedstawionych na rysunku \ref{fig:class masking problem} prostych regresji liniowych ujawnia problem maskowania klas w odniesieniu do kategorii 'Versicolor'. W obszarze niskich wartości predyktora `r predictor`, charakteryzujących się największym prawdopodobieństwem obserwacji, krzywa regresji odpowiadająca gatunkowi Iris versicolor przebiega pomiędzy krzywymi pozostałych klas. Taka konfiguracja przestrzenna implikuje, iż w zakresie wspomnianych wartości predyktora, klasyfikator oparty na bezpośrednim porównaniu wartości regresji liniowej może systematycznie pomijać przynależność obserwacji do klasy 'Versicolor', prowadząc do potencjalnych błędów klasyfikacji.
 
 ## Analiza skuteczności klasyfikacji dla zbioru testowego
 ```{r confussion matrix for testing samples, fig.cap = "Macierz pomyłek regresji liniowej dla obserwacji testowych", include = TRUE}
@@ -189,7 +187,7 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
        x = "Predicted Class", y = "True Class", fill = "Precision") +
   theme_minimal()
 ```
-Podobne wnioski można wyciągnąć z oceny skuteczności modelu regresji na zbiorze testowym, co ilustruje macierz pomyłek na rysunku \ref{fig:Macierz pomyłek regresji liniowej dla obserwacji testowych}. Klasa 'versicolor' wykazuje relatywnie wysoką częstotliwość błędnych klasyfikacji, co jest prawdopodobnie konsekwencją wspomnianego problemu maskowania klas.
+Podobne wnioski można wyciągnąć z oceny skuteczności modelu regresji na zbiorze testowym, co ilustruje macierz pomyłek na rysunku \ref{fig:confussion matrix for testing samples}. Klasa 'versicolor' wykazuje relatywnie wysoką częstotliwość błędnych klasyfikacji, co jest prawdopodobnie konsekwencją wspomnianego problemu maskowania klas.
 
 # Klasyfikacja na bazie modelu regresji liniowej z czynnikami wielomianowymi
 Trudności związane z maskowaniem klas znacząco utrudniają stworzenie efektywnego klasyfikatora opartego na modelu regresji liniowej. W celu zminimalizowania tego problemu i poprawy jakości klasyfikacji, wykorzystamy predyktory do wygenerowania czynników wielomianowych, czyli wyrażeń w formie: ...
@@ -314,3 +312,130 @@ Analiza map cieplnych macierzy pomyłek wykazała znaczącą poprawę skuteczno�
 Wykresy macierzy pomyłek jednoznacznie wskazują, że wprowadzenie czynników wielomianowych przyczyniło się do lepszego rozdzielenia przestrzeni cech, co w konsekwencji umożliwiło modelowi regresji liniowej dokładniejsze przypisanie próbek do właściwych klas. Zanik "pomijania" klasy 'versicolor' oraz ogólnie wyższa koncentracja wartości na głównej diagonali macierzy pomyłek dla modelu z cechami wielomianowymi stanowią silne argumenty przemawiające za istotnością rozszerzenia zestawu cech o komponenty wielomianowe.
 
 Na podstawie przeprowadzonych obserwacji można zatem wnioskować, że dodanie czynników wielomianowych do modelu regresji liniowej jest uzasadnione i korzystnie wpływa na zdolności klasyfikacyjne modelu w analizowanym problemie. Rozszerzenie przestrzeni cech o interakcje i potęgi oryginalnych cech dostarcza modelowi dodatkowych informacji, które pozwalają na tworzenie bardziej złożonych i dokładnych granic decyzyjnych między klasami.
+
+# Porównanie metod klasyfikacji
+
+```{r, pimaindiansdiabetes loading}
+library("mlbench")
+data("PimaIndiansDiabetes2")
+pimaindians.df <- PimaIndiansDiabetes2
+
+```
+W tym rozdziale skupimy się na porównaniu wybranych metod klasyfikacyjnych: algorytmu K-najbliższych sąsiadów, drzewa decyzyjnego oraz klasyfikatora bayesowskiego. Reguły decyzyjne zostaną wytrenowane i przetestowane na zbiorze danych PimaIndiansDiabetes2, który jest dostępny w pakiecie mlbench w języku R. Przed przystąpieniem do budowy modeli podzielimy dane na zbiór treningowy i testowy, aby zapobiec zjawisku wycieku danych oraz zapewnić wiarygodną ocenę skuteczności klasyfikatorów. 
+
+Zbiór danych PimaIndiansDiabetes2 zawiera `r nrow(pimaindians.df)` przypadków oraz `r ncol(pimaindians.df)` zmiennych, z czego `r ncol(pimaindians.df)-1` stanowi potencjalne cechy predykcyjne, a jedna kolumna – diabetes – pełni rolę zmiennej objaśnianej. Określa ona, czy dana osoba – kobieta pochodząca z rdzennego plemienia Pima, zamieszkującego stan Arizona w USA – należy do grupy osób chorujących na cukrzycę typu 2. W celu uproszczenia analizy, poziomy zmiennej diabetes zostały zmienione z "pos" i "neg" na "1" i "0", przy czym zmienna zachowała typ czynnika (ang. factor).
+
+
+
+```{r target var transforming}
+pimaindians.df  <-  pimaindians.df %>% mutate(diabetes = ifelse(pimaindians.df$diabetes == "pos", 1, 0))
+
+pimaindians.df$diabetes <- factor(pimaindians.df$diabetes)
+```
+Wstępna analiza opisowa zbioru danych wykazała, że brakujące wartości zostały oznaczone w sposób zgodny z powszechną konwencją, czyli przy użyciu symbolu NA. W danych nie występują nietypowe lub niepoprawne sposoby kodowania braków, takie jak wartość 0 w kolumnie insulin, co czasem spotyka się w gorzej przygotowanych zbiorach. Zmienna docelowa diabetes jest prawidłowo przechowywana jako czynnik (ang. factor), co umożliwia bezpośrednie jej wykorzystanie w zadaniach klasyfikacyjnych.
+
+## Wstępna analiza danych.
+Na początku przeprowadzona zostanie analiza rozkładu klas zmiennej docelowej. Jest to ważny krok, gdyż nierównomierne rozłożenie klas (tzw. problem niezbalansowanych danych) może znacząco wpłynąć na ocenę skuteczności modeli.
+```{r, target classes distribution, fig.cap = "Rozkład etykiet zmiennej celu diabetes", include = TRUE}
+# Probability for each class of `diabetes` target variable.
+probs <- pimaindians.df %>%
+  group_by(diabetes) %>%
+  summarise(liczba = n()) %>%
+  mutate(prawdopodobienstwo = liczba / sum(liczba))
+
+probs$diabetes <- factor(probs$diabetes)
+
+ggplot(probs, aes(x = diabetes, y = prawdopodobienstwo, fill = diabetes)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Klasa", y = "Odsetek", title = "Rozkład etykiet zmiennej `Diabetes`")
+
+```
+Z rysunku \ref{fig:target classes distribution} wyraźnie wynika, że mamy do czynienia z problemem niezbalansowanych danych — liczba osób niechorujących na cukrzycę typu 2 jest niemal dwukrotnie większa niż liczba osób chorych. Teoretycznie, gdybyśmy zastosowali prosty, „naiwny” klasyfikator przypisujący każdą obserwację do klasy dominującej, uzyskalibyśmy wysoką ogólną skuteczność. Jednak po bliższej analizie metryk oceniających dokładność dla obu klas okazałoby się, że taki model w praktyce jest nieskuteczny, ponieważ całkowity błąd klasyfikacji dla klasy mniejszościowej wyniósłby 100%.
+
+Przeanalizujemy teraz rozkłady ciągłych predyktorów. Jest to bardzo istotna kwestia, zwłaszcza w kontekście klasyfikatora KNN, gdzie różne skale pomiarowe różnych zmiennych mogą znacząco zanizać wpływ zmiennych charakteryzujących się zwięzłym zakresem wartości.
+
+```{r variance comparison, fig.cap = "Porównanie wariancji predyktorów", include = TRUE}
+# Find predictors
+predictors <- setdiff(colnames(pimaindians.df), "diabetes")
+
+# Dataframe with predictors
+X <- pimaindians.df[predictors]
+
+# Convert to long format
+X.long <- X %>%
+  pivot_longer(cols = everything(),
+               names_to = "predictor",
+               values_to = "realization")
+
+# Plotting boxplots
+ggplot(X.long, aes(x = predictor, y = realization, fill = predictor)) +
+  geom_boxplot(outlier.size = 1, outlier.alpha = 0.6) +  # boxplot with smaller, semi-transparent outliers
+  theme_minimal(base_size = 14) +                        # clean minimal theme with base font size 14
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # rotate x-axis labels 45 degrees for better readability
+    legend.position = "none"                             # hide legend (fill color is redundant with x-axis labels)
+  ) +
+  labs(
+    x = "Predyktor",                                     # etykieta osi X
+    y = "Realizacja zmiennej",                           # etykieta osi Y
+    title = "Wykres pudełkowy predyktorów"               # tytuł wykresu
+  )
+
+```
+Z rysunku \ref{fig:variance comparison} jasno wynika, że standaryzacja predyktorów jest niezbędna. Zmienne różnią się istotnie zarówno pod względem wariancji, jak i wartości tendencji centralnej, co szczególnie widoczne jest na przykładzie porównania wykresów pudełkowych zmiennych „insulin” oraz „triceps”. Dokonajmy zatem standaryzacji i spójrzmy na rezultaty, które przedstawiono na rysunku \ref{fig:variance comparison after standarization}
+
+```{r variance comparison after standarization, fig.cap = "Porównanie wariancji predyktorów po zastosowaniu standaryzacji", include = TRUE}
+
+X.std <- data.frame(apply(X, 2, function(x){ (x - mean(x, na.rm = TRUE))/ sd(x, na.rm = TRUE)}
+))
+
+# Convert to long format
+X.std.long <- X.std %>%
+  pivot_longer(cols = everything(),
+               names_to = "predictor",
+               values_to = "realization")
+
+
+# Plotting boxplots
+ggplot(X.std.long, aes(x = predictor, y = realization, fill = predictor)) +
+  geom_boxplot(outlier.size = 1, outlier.alpha = 0.6) +  # boxplot with smaller, semi-transparent outliers
+  theme_minimal(base_size = 14) +                        # clean minimal theme with base font size 14
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1),  # rotate x-axis labels 45 degrees for better readability
+    legend.position = "none"                             # hide legend (fill color is redundant with x-axis labels)
+  ) +
+  labs(
+    x = "Predyktor",                                     # etykieta osi X
+    y = "Realizacja zmiennej",                           # etykieta osi Y
+    title = "Wykres pudełkowy predyktorów",               # tytuł wykresu
+    subtitle = "Po zastosowaniu standaryzacji"            # Podtytuł wykresu
+  )
+
+
+```
+Mając już ujednoliconą skalę pomiarową dla wszystkich predyktorów, możemy przejść do oceny ich zdolności dyskryminacyjnej. Ten etap pozwoli nam zidentyfikować zmienne najlepiej rozróżniające klasy i lepiej zrozumieć ich wpływ na działanie modelu.
+```{r dyscrimination power analysis, include = TRUE, fig.width= 12, fig.height = 6, fig.cap = "Porównanie zdolności dyskryminacyjnych predyktorów"}
+# Apply the standarization to the dataframe
+pimaindians.df[predictors] = X.std
+
+
+pimaindians.long.df <- pimaindians.df %>% pivot_longer( cols = where(is.numeric), values_to = "realization", 
+                                                        names_to = "predictor")
+
+# Plotting boxplots
+ggplot(pimaindians.long.df, aes(x = predictor, y = realization, fill = diabetes)) +
+  geom_boxplot(outlier.size = 1, outlier.alpha = 0.6) +  # boxplot with smaller, semi-transparent outliers
+  theme_minimal(base_size = 14) +                        # clean minimal theme with base font size 14
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)  # rotate x-axis labels 45 degrees for better readability
+  ) +
+  labs(
+    x = "Predyktor",                                     # etykieta osi X
+    y = "Realizacja zmiennej",                           # etykieta osi Y
+    title = "Wykres pudełkowy predyktorów po zastosowaniu standaryzacji",               # tytuł wykresu
+  )
+
+
+```
+Jak pokazano na rysunku \ref{fig:dyscrimination power analysis}, żadna ze zmiennych nie rozdziela klas docelowych w sposób idealny. Mimo to, można wyróżnić predyktory o wyraźnie silniejszych zdolnościach dyskryminacyjnych. Do takich atrybutów należą zmienne: 'glucose', 'insulin', 'triceps' oraz 'mass'. Natomiast najsłabszą zdolność separacji klas wykazują zmienne 'pedigree' oraz 'pressure'.
+
