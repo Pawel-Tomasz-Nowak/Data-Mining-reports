@@ -39,6 +39,8 @@ library(ggplot2)
 library(rlang)
 library(dplyr)
 library(tidyr)
+library(class)
+
 ```
 
 ```{r, iris df loading, }
@@ -131,14 +133,14 @@ Możemy przypuszczać, że powodem gorszych wyników dla gatunku versicolor jest
 ```{r linreg plots}
 create_linreg_data <- function(class, predictor = "Sepal.Length"){
   class_idx <- which(classes == class)
-  model_do_wykresu <- models[[class_idx]] # Pobiera model dla danej klasy
-  wspolczynniki <- coef(model_do_wykresu)  # Pobiera współczynniki modelu
+  model_do_wykresu <- models[[class_idx]] # Find the model for this particular class
+  wspolczynniki <- coef(model_do_wykresu)  # Find the model coefficients
 
-  przewidywane_wartosci <- wspolczynniki[1]  + wspolczynniki[predictor] * train_data[[predictor]] # Oblicza przewidywane wartości
-  wartosci_regresji <- data.frame("X" = train_data[[predictor]], # Tworzy ramkę danych
+  przewidywane_wartosci <- wspolczynniki[1]  + wspolczynniki[predictor] * train_data[[predictor]] # Find the prediction error
+  wartosci_regresji <- data.frame("X" = train_data[[predictor]], # Create data frame
                                    "Y" = przewidywane_wartosci,
                                    "Class" = class)
-  colnames(wartosci_regresji) = c(predictor, "Y", "Class") # Ustawia nazwy kolumn
+  colnames(wartosci_regresji) = c(predictor, "Y", "Class") # Set the column names
   return(wartosci_regresji)
 }
 ```
@@ -301,9 +303,12 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
   geom_tile(color = "white") +
   geom_text(aes(label = round(Precision, 2)), size = 4) +
   scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(title = "Confusion matrix of the linear regression \n (with polynomial features)",
-       x = "Predicted Class", y = "True Class", fill = "Precision") +
-  theme_minimal()
+  labs(title = "Macierz pomyłek dla regresji liniowej",
+       subtitle  = "Z czynnikami wielomianowymi",
+       x = "Prognozowana klasa", y = "Rzeczywista klasa", fill = "Precision") +
+  theme_minimal()+
+  theme(legend.position = "none")
+
 
 ```
 ## Wnioski
@@ -438,4 +443,173 @@ ggplot(pimaindians.long.df, aes(x = predictor, y = realization, fill = diabetes)
 
 ```
 Jak pokazano na rysunku \ref{fig:dyscrimination power analysis}, żadna ze zmiennych nie rozdziela klas docelowych w sposób idealny. Mimo to, można wyróżnić predyktory o wyraźnie silniejszych zdolnościach dyskryminacyjnych. Do takich atrybutów należą zmienne: 'glucose', 'insulin', 'triceps' oraz 'mass'. Natomiast najsłabszą zdolność separacji klas wykazują zmienne 'pedigree' oraz 'pressure'.
+
+# Ocena dokładności klasyfikacji i porównanie metod
+
+Celem niniejszej części analizy jest szczegółowe porównanie trzech wybranych algorytmów klasyfikacyjnych: K-najbliższych sąsiadów (KNN), naiwnego klasyfikatora Bayesowskiego oraz drzewa decyzyjnego. Aby zapewnić obiektywną i rzetelną ocenę skuteczności poszczególnych metod, wszystkie modele zostaną wytrenowane oraz przetestowane na tym samym podziale danych. Dzięki temu możliwe będzie bezpośrednie porównanie ich wyników, przy zachowaniu jednolitych warunków eksperymentu.
+
+ 
+```{r dataset splitting}
+split_ratio <- 0.7
+
+
+# Imputation by mean
+pimaindians.df <- pimaindians.df %>%
+  mutate(across(where(is.numeric), ~ ifelse(is.na(.), mean(., na.rm = TRUE), .)))
+
+
+train_indices <- sample(seq_len(nrow(pimaindians.df)), size = split_ratio * nrow(pimaindians.df))
+
+train_data <- pimaindians.df[train_indices, ]
+test_data  <- pimaindians.df[-train_indices, ]
+
+
+train.X <- train_data[, predictors] # Training set of predictors
+train.Y <- train_data[, c("diabetes")] # Training set of target variable
+
+test.X <- test_data[, predictors] # Testing set of predictors
+test.Y <- test_data[, c("diabetes")]  # Testing set of target variable
+
+```
+
+```{r KNN training, include = TRUE}
+# Build the KNN model
+KNN_build <- function(k){
+knn_pred <- knn(train = train.X, test = test.X, cl = train.Y, k = k)
+
+return (knn_pred)
+}
+
+```
+
+```{r, KNN evaluating, fig.cap = "Macierz pomyłek dla algorytmu KNN, k = 5", include = TRUE}
+knn_pred <- KNN_build(5)
+# Create a confussion matrix
+conf.matrix <- confusionMatrix(data = knn_pred, reference = test.Y)$table
+
+# Normalize the matrix by columns and melt the matrix
+conf.matrix <- melt(prop.table(conf.matrix, margin = 2))
+
+# Rename the columns of the matrix
+colnames(conf.matrix) <- c("Predicted.label", "True.label", "Precision")
+
+conf.matrix$Predicted.label <- factor(conf.matrix$Predicted.label, levels = c("0", "1"))
+conf.matrix$True.label <- factor(conf.matrix$True.label, levels = c("0", "1"))
+
+p1 <- ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) +
+  geom_tile(color = "white") +
+  geom_text(aes(label = round(Precision, 2)), size = 4) +
+  scale_fill_gradient(low = "white", high = "steelblue") +
+  labs(title = "Macierz pomyłek algorytmu KNN",
+       subtitle = "k = 5",
+       x = "Prognozowana klasa", y = "Rzeczywista klasa", fill = "Precision") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+print(p1)
+
+
+# Find the precisions of both classes
+class.precisions <- filter(conf.matrix, Predicted.label == True.label)    
+                           
+# Precision for 0 class.
+precision.0 <- class.precisions[1, "Precision"] 
+
+# Precision for 1 class
+precision.1 <- class.precisions[2, "Precision"] 
+
+```
+Jak przedstawiono na rysunku \ref{fig:KNN evaluating}, metoda KNN przy liczbie sąsiadów 'k = 5' nie osiąga zadowalających rezultatów. Wartość precyzji dla klasy 0 wynosi `r round(precision.0,2)`, natomiast dla klasy 1 `r round(precision.1,2)`. Uzyskane wyniki wskazują na niewystarczającą skuteczność modelu w obecnej konfiguracji, co skłania do dalszej analizy wpływu hiperparametru 'k'na jakość klasyfikacji.
+
+W tym celu porównamy błędy klasyfikacji algorytmu dla różnych wartości 'k', najpierw stosując jednokrotny podział danych na zbiór treningowy i testowy, a następnie wykorzystując walidację krzyżową. Podejście to pozwoli na bardziej obiektywną ocenę efektywności modelu w zależności od doboru liczby sąsiadów.
+
+```{r Classification error of KNN, include = TRUE, fig.cap = "Porównanie błędu klasyfikacji KNN dla różnych wartości hiperparametru k"}
+KNN_class_error <- function(k){
+  # Train the model
+  y.pred <- KNN_build(k)
+  
+  # Compute the classification error
+  CE <- sum((y.pred != test.Y)) / length(y.pred)
+  
+  return(CE)
+}
+
+K <- seq.int(1, 25, 1)
+
+CEs <- sapply(K, KNN_class_error)
+
+df <- data.frame(k = K, CE = CEs)
+
+# Oblicz minimalny błąd i odpowiadające mu k
+min_CE <- min(df$CE)
+best_k <- df$k[which.min(df$CE)]
+
+
+# Znajdź najlepsze k
+min_CE <- min(df$CE)
+best_k <- df$k[which.min(df$CE)]
+
+# Wykres
+ggplot(df, aes(x = k, y = CE)) +
+  geom_line(color = "blue", size = 1) +
+  geom_point(color = "red", size = 1.8) +
+  geom_point(data = subset(df, k == best_k), aes(x = k, y = CE), 
+             color = "green", size = 2.5) +
+  labs(title = "Błąd klasyfikacji w zależności od liczby sąsiadów",
+       subtitle = "Algorytm k-Nearest Neighbors",
+       x = "Liczba sąsiadów (k)",
+       y = "Błąd klasyfikacji") +
+  scale_x_continuous(breaks = seq(1, 25, 2)) +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_minimal(base_size = 12) +
+  theme(
+    plot.title = element_text(face = "bold", size = 14),
+    plot.subtitle = element_text(size = 11),
+    axis.title = element_text(size = 12),
+    axis.text = element_text(size = 10),
+    panel.grid.minor = element_blank()
+  )
+
+```
+
+
+```{r cross validation for KNN, include = TRUE, fig.cap = "Porównanie błędu klasyfikacji KNN dla różnych wartości hiperparametru k z uwzględnieniem walidacji krzyżowej"}
+# Tworzymy data frame do trenowania
+train_data <- data.frame(X = train.X, Y = as.factor(train.Y))
+
+# Ustawienia cross-validation
+ctrl <- trainControl(method = "cv",        # cross-validation
+                     number = 25)          # Number of folds
+                
+# Train KNN with CV
+set.seed(123)  # dla powtarzalności
+knn_cv_model <- train(Y ~ ., 
+                      data = train_data,
+                      method = "knn",
+                      trControl = ctrl,
+                      tuneGrid = data.frame(k = 1:25))  #
+
+# Compute the classificator error (1 - accuracy)
+results <- knn_cv_model$results
+results$ClassificationError <- 1 - results$Accuracy
+
+min_CE <- min(results$ClassificationError)
+best_k_CV <- results$k[which.min(results$ClassificationError)]
+
+
+ggplot(results, aes(x = k, y = ClassificationError)) +
+  geom_line(color = "blue") +
+  geom_point(color = "red", size = 2.5) + 
+  geom_point(data = subset(results, k == best_k), aes(x = k, y = ClassificationError),
+             color = "green", size = 2.5) +
+  labs(title = "Błąd klasyfikacji w cross-validation dla KNN",
+       x = "Liczba sąsiadów (k)",
+       y = "Błąd klasyfikacji") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+  theme_minimal()
+
+```
+\newpage
+Rysunki \ref{fig:Classification error of KNN} oraz \ref{fig:cross validation for KNN} ilustrują estymowaną wartość błędu klasyfikacji w zależności od liczby sąsiadów k w algorytmie KNN. Na podstawie wykresu dla jednokrotnego podziału zbioru danych wnioskujemy, że najniższy błąd osiągany jest dla k = \texttt{`r best_k`}. Z kolei analiza wyników uzyskanych metodą walidacji krzyżowej wskazuje, że optymalną wartością hiperparametru jest k = \texttt{`r best_k_CV`}. Obserwacje te potwierdzają znaczenie odpowiedniego doboru parametru 
+k oraz pokazują, że walidacja krzyżowa może dostarczyć bardziej wiarygodnych oszacowań błędu generalizacji.
 
