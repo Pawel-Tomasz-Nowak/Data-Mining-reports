@@ -119,8 +119,8 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
   geom_tile(color = "white") +
   geom_text(aes(label = round(Precision, 2)), size = 4) +
   scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(title = "Confusion matrix of the linear regression (traing samples)",
-       x = "Predicted Class", y = "True Class", fill = "Precision") +
+  labs(title = "Macierz pomyłek regresji liniowej dla próbek treningowych",
+       x = "Klasa prognozowana", y = "Rzeczywista klasa", fill = "Precision") +
   theme_minimal()
 
 ```
@@ -185,8 +185,9 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
   geom_tile(color = "white") +
   geom_text(aes(label = round(Precision, 2)), size = 4) +
   scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(title = "Confusion matrix of the linear regression (testing samples)",
+  labs(title = "Macierz pomyłek dla regresji liniowej dla próbek testowych",
        x = "Predicted Class", y = "True Class", fill = "Precision") +
+  theme(legend.position = "none") +
   theme_minimal()
 ```
 Podobne wnioski można wyciągnąć z oceny skuteczności modelu regresji na zbiorze testowym, co ilustruje macierz pomyłek na rysunku \ref{fig:confussion matrix for testing samples}. Klasa 'versicolor' wykazuje relatywnie wysoką częstotliwość błędnych klasyfikacji, co jest prawdopodobnie konsekwencją wspomnianego problemu maskowania klas.
@@ -273,7 +274,8 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
   geom_tile(color = "white") +
   geom_text(aes(label = round(Precision, 2)), size = 4) +
   scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(title = "Confusion matrix of the linear regression \n (with polynomial features)",
+  labs(title = "Macierz pomyłek dla regresji liniowej dla próbek treningowych",
+       subtitle = "Z czynnikami wielomianowymi",
        x = "Predicted Class", y = "True Class", fill = "Precision") +
   theme_minimal()
 
@@ -303,12 +305,10 @@ ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) 
   geom_tile(color = "white") +
   geom_text(aes(label = round(Precision, 2)), size = 4) +
   scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(title = "Macierz pomyłek dla regresji liniowej",
+  labs(title = "Macierz pomyłek dla regresji liniowej dla próbek testowych",
        subtitle  = "Z czynnikami wielomianowymi",
        x = "Prognozowana klasa", y = "Rzeczywista klasa", fill = "Precision") +
-  theme_minimal()+
-  theme(legend.position = "none")
-
+  theme_minimal()
 
 ```
 ## Wnioski
@@ -503,8 +503,7 @@ p1 <- ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precis
   labs(title = "Macierz pomyłek algorytmu KNN",
        subtitle = "k = 5",
        x = "Prognozowana klasa", y = "Rzeczywista klasa", fill = "Precision") +
-  theme_minimal() +
-  theme(legend.position = "none")
+  theme_minimal()
 
 print(p1)
 
@@ -600,7 +599,7 @@ best_k_CV <- results$k[which.min(results$ClassificationError)]
 ggplot(results, aes(x = k, y = ClassificationError)) +
   geom_line(color = "blue") +
   geom_point(color = "red", size = 2.5) + 
-  geom_point(data = subset(results, k == best_k), aes(x = k, y = ClassificationError),
+  geom_point(data = subset(results, k == best_k_CV), aes(x = k, y = ClassificationError),
              color = "green", size = 2.5) +
   labs(title = "Błąd klasyfikacji w cross-validation dla KNN",
        x = "Liczba sąsiadów (k)",
