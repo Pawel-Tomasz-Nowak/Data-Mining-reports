@@ -40,6 +40,8 @@ library(rlang)
 library(dplyr)
 library(tidyr)
 library(class)
+library(rpart)
+library(e1071)
 
 ```
 
@@ -419,7 +421,7 @@ ggplot(X.std.long, aes(x = predictor, y = realization, fill = predictor)) +
 
 ```
 Mając już ujednoliconą skalę pomiarową dla wszystkich predyktorów, możemy przejść do oceny ich zdolności dyskryminacyjnej. Ten etap pozwoli nam zidentyfikować zmienne najlepiej rozróżniające klasy i lepiej zrozumieć ich wpływ na działanie modelu.
-```{r dyscrimination power analysis, include = TRUE, fig.width= 12, fig.height = 6, fig.cap = "Porównanie zdolności dyskryminacyjnych predyktorów"}
+```{r dyscrimination power analysis, include = TRUE, fig.width= 7, fig.height = 6, fig.cap = "Porównanie zdolności dyskryminacyjnych predyktorów"}
 # Apply the standarization to the dataframe
 pimaindians.df[predictors] = X.std
 
@@ -480,135 +482,265 @@ knn_pred <- knn(train = train.X, test = test.X, cl = train.Y, k = k)
 return (knn_pred)
 }
 
-```
-
-```{r, KNN evaluating, fig.cap = "Macierz pomyłek dla algorytmu KNN, k = 5", include = TRUE}
 knn_pred <- KNN_build(5)
-# Create a confussion matrix
-conf.matrix <- confusionMatrix(data = knn_pred, reference = test.Y)$table
+```
 
-# Normalize the matrix by columns and melt the matrix
-conf.matrix <- melt(prop.table(conf.matrix, margin = 2))
-
-# Rename the columns of the matrix
-colnames(conf.matrix) <- c("Predicted.label", "True.label", "Precision")
-
-conf.matrix$Predicted.label <- factor(conf.matrix$Predicted.label, levels = c("0", "1"))
-conf.matrix$True.label <- factor(conf.matrix$True.label, levels = c("0", "1"))
-
-p1 <- ggplot(conf.matrix, aes(x = Predicted.label, y = True.label, fill = Precision)) +
-  geom_tile(color = "white") +
-  geom_text(aes(label = round(Precision, 2)), size = 4) +
-  scale_fill_gradient(low = "white", high = "steelblue") +
-  labs(title = "Macierz pomyłek algorytmu KNN",
-       subtitle = "k = 5",
-       x = "Prognozowana klasa", y = "Rzeczywista klasa", fill = "Precision") +
-  theme_minimal()
-
-print(p1)
-
-
-# Find the precisions of both classes
-class.precisions <- filter(conf.matrix, Predicted.label == True.label)    
-                           
-# Precision for 0 class.
-precision.0 <- class.precisions[1, "Precision"] 
-
-# Precision for 1 class
-precision.1 <- class.precisions[2, "Precision"] 
+```{r classification tree, include=TRUE}
+tree_model <- rpart(diabetes ~ ., data = train_data, method = "class")
+tree_pred <- predict(tree_model, test.X, type = "class")
 
 ```
-Jak przedstawiono na rysunku \ref{fig:KNN evaluating}, metoda KNN przy liczbie sąsiadów 'k = 5' nie osiąga zadowalających rezultatów. Wartość precyzji dla klasy 0 wynosi `r round(precision.0,2)`, natomiast dla klasy 1 `r round(precision.1,2)`. Uzyskane wyniki wskazują na niewystarczającą skuteczność modelu w obecnej konfiguracji, co skłania do dalszej analizy wpływu hiperparametru 'k'na jakość klasyfikacji.
+
+```{r naive bayes classifier, include=TRUE}
+nb_model <- naiveBayes(x = train.X, y = train.Y)
+nb_pred <- predict(nb_model, newdata = test.X)
+```
+
+```{r confusion matrixes for algorithms, include=TRUE}
+
+plot_confusion_matrix <- function(predictions, true_labels, model_name = "Model", subtitle = "") {
+  
+  predictions <- as.factor(predictions)
+  true_labels <- as.factor(true_labels)
+  levels(predictions) <- levels(true_labels)
+  
+  conf_raw <- confusionMatrix(data = predictions, reference = true_labels)
+  conf_table <- conf_raw$table
+  
+  conf_melted <- melt(prop.table(conf_table, margin = 2))
+  colnames(conf_melted) <- c("Predicted.label", "True.label", "Precision")
+  
+  if (all(levels(true_labels) %in% c("0", "1"))) {
+    conf_melted$Predicted.label <- factor(conf_melted$Predicted.label, levels = c("0", "1"))
+    conf_melted$True.label <- factor(conf_melted$True.label, levels = c("0", "1"))
+  }
+
+  p <- ggplot(conf_melted, aes(x = Predicted.label, y = True.label, fill = Precision)) +
+    geom_tile(color = "white") +
+    geom_text(aes(label = round(Precision, 2)), size = 4) +
+    scale_fill_gradient(low = "white", high = "steelblue") +
+    labs(title = paste("Macierz pomyłek -", model_name),
+         subtitle = subtitle,
+         x = "Prognozowana klasa", y = "Rzeczywista klasa", fill = "Precision") +
+    theme_minimal()
+  
+  class_precisions <- filter(conf_melted, Predicted.label == True.label)
+  precision.0 <- class_precisions[class_precisions$True.label == "0", "Precision"]
+  precision.1 <- class_precisions[class_precisions$True.label == "1", "Precision"]
+
+  return(list(
+    plot = p,
+    precision.0 = precision.0,
+    precision.1 = precision.1
+  ))
+}
+
+
+knn_result <- plot_confusion_matrix(knn_pred, test.Y, model_name = "KNN", subtitle = "k = 5")
+tree_result <- plot_confusion_matrix(tree_pred, test.Y, model_name = "Drzewo decyzyjne")
+nb_result   <- plot_confusion_matrix(nb_pred, test.Y, model_name = "Naiwny Bayes")
+
+```
+
+```{r KNN evaluating, fig.cap = "Macierz pomyłek dla algorytmu KNN, k = 5", include = TRUE}
+print(knn_result$plot)
+```
+
+```{r clasification tree evaluating, fig.cap = "Macierz pomyłek dla drzewa klasyfikacyjnego", include = TRUE}
+print(tree_result$plot)
+```
+
+```{r naive bayes evaluating, fig.cap = "Macierz pomyłek dla naiwnego klasyfikatora bayesa", include = TRUE}
+print(nb_result $plot)
+```
+
+
+Jak przedstawiono na rysunku \ref{fig:KNN evaluating}, metoda KNN przy liczbie sąsiadów 'k = 5' nie osiąga zadowalających rezultatów. Wartość precyzji dla klasy 0 wynosi `r round(knn_result$precision.0,2)`, natomiast dla klasy 1 `r round(knn_result$precision.1,2)`. Uzyskane wyniki wskazują na niewystarczającą skuteczność modelu w obecnej konfiguracji, co skłania do dalszej analizy wpływu hiperparametru 'k' na jakość klasyfikacji.
 
 W tym celu porównamy błędy klasyfikacji algorytmu dla różnych wartości 'k', najpierw stosując jednokrotny podział danych na zbiór treningowy i testowy, a następnie wykorzystując walidację krzyżową. Podejście to pozwoli na bardziej obiektywną ocenę efektywności modelu w zależności od doboru liczby sąsiadów.
 
-```{r Classification error of KNN, include = TRUE, fig.cap = "Porównanie błędu klasyfikacji KNN dla różnych wartości hiperparametru k"}
-KNN_class_error <- function(k){
-  # Train the model
-  y.pred <- KNN_build(k)
+
+
+```{r classification error, include=TRUE}
+plot_classification_error <- function(param_values, model_function, param_name = "Parametr", model_label = "Model") {
   
-  # Compute the classification error
-  CE <- sum((y.pred != test.Y)) / length(y.pred)
+  errors <- sapply(param_values, function(p) {
+    pred <- model_function(p)
+    mean(pred != test.Y)
+  })
   
-  return(CE)
+  df <- data.frame(param = param_values, CE = errors)
+  best_param <- df$param[which.min(df$CE)]
+  min_CE <- min(df$CE)
+  
+  p <- ggplot(df, aes(x = param, y = CE)) +
+    geom_line(color = "blue", size = 1) +
+    geom_point(color = "red", size = 1.8) +
+    geom_point(data = subset(df, param == best_param), aes(x = param, y = CE), 
+               color = "green", size = 2.5) +
+    labs(
+      title = paste("Błąd klasyfikacji w zależności od", param_name),
+      subtitle = paste("Model:", model_label),
+      x = param_name,
+      y = "Błąd klasyfikacji"
+    ) +
+    scale_x_continuous(breaks = param_values[seq(1, length(param_values), by = 2)]) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
+    theme_minimal(base_size = 12) +
+    theme(
+      plot.title = element_text(face = "bold", size = 14),
+      plot.subtitle = element_text(size = 11),
+      axis.title = element_text(size = 12),
+      axis.text = element_text(angle = 45, size = 10),
+      panel.grid.minor = element_blank()
+    )
+  return(list(
+    plot = p,
+    best_param = best_param,
+    min_error = min_CE,
+    data = df
+  ))
 }
 
-K <- seq.int(1, 25, 1)
-
-CEs <- sapply(K, KNN_class_error)
-
-df <- data.frame(k = K, CE = CEs)
-
-# Oblicz minimalny błąd i odpowiadające mu k
-min_CE <- min(df$CE)
-best_k <- df$k[which.min(df$CE)]
-
-
-# Znajdź najlepsze k
-min_CE <- min(df$CE)
-best_k <- df$k[which.min(df$CE)]
-
-# Wykres
-ggplot(df, aes(x = k, y = CE)) +
-  geom_line(color = "blue", size = 1) +
-  geom_point(color = "red", size = 1.8) +
-  geom_point(data = subset(df, k == best_k), aes(x = k, y = CE), 
-             color = "green", size = 2.5) +
-  labs(title = "Błąd klasyfikacji w zależności od liczby sąsiadów",
-       subtitle = "Algorytm k-Nearest Neighbors",
-       x = "Liczba sąsiadów (k)",
-       y = "Błąd klasyfikacji") +
-  scale_x_continuous(breaks = seq(1, 25, 2)) +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  theme_minimal(base_size = 12) +
-  theme(
-    plot.title = element_text(face = "bold", size = 14),
-    plot.subtitle = element_text(size = 11),
-    axis.title = element_text(size = 12),
-    axis.text = element_text(size = 10),
-    panel.grid.minor = element_blank()
-  )
 
 ```
 
+```{r Classification error of KNN, include = TRUE, fig.cap = "Porównanie błędu klasyfikacji KNN dla różnych wartości hiperparametru k"}
+knnfun <- plot_classification_error(
+  param_values = 1:25,
+  model_function = KNN_build,
+  param_name = "Liczba sąsiadów (k)",
+  model_label = "KNN"
+)
+
+knnfun$plot
+
+```
+
+
+```{r Classification error of the tree , include = TRUE, fig.cap = "Porównanie błędu klasyfikacji drzewa decyzyjnego dla różnych wartości parametru cp"}
+
+Tree_build <- function(cp_value) {
+  model <- rpart(diabetes ~ ., data = train_data, method = "class",
+                 control = rpart.control(cp = cp_value))
+  predict(model, test.X, type = "class")
+}
+
+treefun <- plot_classification_error(
+  param_values = seq(0.001, 0.05, by = 0.002),
+  model_function = Tree_build,
+  param_name = "Parametr cp",
+  model_label = "Drzewo decyzyjne"
+)
+
+treefun$plot
+
+```
+```{r Classification naive bayes , include = TRUE, fig.cap = "Porównanie błędu klasyfikacji naiwnego klasyfikatora bayesowskiego dla różnych wartości parametru laplace"}
+NB_build <- function(laplace_value) {
+  model <- naiveBayes(diabetes ~ ., data = train_data, laplace = laplace_value)
+  predict(model, test.X)
+}
+
+nbfun <- plot_classification_error(
+  param_values = 0:5,
+  model_function = NB_build,
+  param_name = "Laplace smoothing",
+  model_label = "Naiwny klasyfikator Bayesa"
+)
+
+nbfun$plot
+
+```
+
+
+```{r cross validation, include = TRUE}
+library(caret)
+library(ggplot2)
+library(scales)
+
+cv_model_error_plot <- function(train.X, train.Y, method, param_name, param_values,
+                                folds = 25, seed = 123, model_label = NULL) {
+  
+  train_data <- data.frame(X = train.X, Y = as.factor(train.Y))
+  
+  ctrl <- trainControl(method = "cv", number = folds)
+  
+  tune_grid <- data.frame(param_values)
+  colnames(tune_grid) <- param_name
+  
+  set.seed(seed)
+  model_cv <- train(Y ~ ., data = train_data,
+                    method = method,
+                    trControl = ctrl,
+                    tuneGrid = tune_grid)
+  
+  results <- model_cv$results
+  results$ClassificationError <- 1 - results$Accuracy
+  
+  best_param <- results[[param_name]][which.min(results$ClassificationError)]
+  min_CE <- min(results$ClassificationError)
+  
+  if (is.null(model_label)) model_label <- method
+  
+  p <- ggplot(results, aes_string(x = param_name, y = "ClassificationError")) +
+    geom_line(color = "blue") +
+    geom_point(color = "red", size = 2.5) + 
+    geom_point(data = subset(results, results[[param_name]] == best_param),
+               aes_string(x = param_name, y = "ClassificationError"),
+               color = "green", size = 2.5) +
+    labs(title = paste("Błąd klasyfikacji w cross-validation dla", model_label),
+         x = param_name,
+         y = "Błąd klasyfikacji") +
+    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    theme_minimal()
+  
+  return(list(
+    best_param = best_param,
+    min_error = min_CE,
+    plot = p
+  ))
+}
+
+
+```
 
 ```{r cross validation for KNN, include = TRUE, fig.cap = "Porównanie błędu klasyfikacji KNN dla różnych wartości hiperparametru k z uwzględnieniem walidacji krzyżowej"}
-# Tworzymy data frame do trenowania
-train_data <- data.frame(X = train.X, Y = as.factor(train.Y))
+result_knn <- cv_model_error_plot(train.X, train.Y,
+                                 method = "knn",
+                                 param_name = "k",
+                                 param_values = 1:25,
+                                 model_label = "KNN")
 
-# Ustawienia cross-validation
-ctrl <- trainControl(method = "cv",        # cross-validation
-                     number = 25)          # Number of folds
-                
-# Train KNN with CV
-set.seed(123)  # dla powtarzalności
-knn_cv_model <- train(Y ~ ., 
-                      data = train_data,
-                      method = "knn",
-                      trControl = ctrl,
-                      tuneGrid = data.frame(k = 1:25))  #
-
-# Compute the classificator error (1 - accuracy)
-results <- knn_cv_model$results
-results$ClassificationError <- 1 - results$Accuracy
-
-min_CE <- min(results$ClassificationError)
-best_k_CV <- results$k[which.min(results$ClassificationError)]
-
-
-ggplot(results, aes(x = k, y = ClassificationError)) +
-  geom_line(color = "blue") +
-  geom_point(color = "red", size = 2.5) + 
-  geom_point(data = subset(results, k == best_k_CV), aes(x = k, y = ClassificationError),
-             color = "green", size = 2.5) +
-  labs(title = "Błąd klasyfikacji w cross-validation dla KNN",
-       x = "Liczba sąsiadów (k)",
-       y = "Błąd klasyfikacji") +
-  scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
-  theme_minimal()
+print(result_knn$plot)
 
 ```
+
+```{r cross validation for classification tree, include = TRUE, fig.cap = "Porównanie błędu klasyfikacji drzewa  klasyfikacyjnego dla różnych wartości parametru cp z uwzględnieniem walidacji krzyżowej"}
+result_tree <- cv_model_error_plot(train.X, train.Y,
+                                  method = "rpart",
+                                  param_name = "cp",
+                                  param_values = seq(0.001, 0.05, by = 0.005),
+                                  model_label = "Drzewo decyzyjne")
+
+print(result_tree$plot)
+
+
+```
+
+```{r cross validation for naive bayes, include = TRUE, fig.cap = "Porównanie błędu klasyfikacji naiwnego klasyfikatora bayesa dla różnych wartości parametru laplace z uwzględnieniem walidacji krzyżowej"}
+
+result_nb <- cv_model_error_plot(train.X, train.Y,
+  method = "nb",           
+  param_name = "fL",   
+  param_values = seq(0, 2, by = 0.5),
+  model_label = "Naive Bayes (Laplace smoothing)"
+)
+
+```
+
 \newpage
-Rysunki \ref{fig:Classification error of KNN} oraz \ref{fig:cross validation for KNN} ilustrują estymowaną wartość błędu klasyfikacji w zależności od liczby sąsiadów k w algorytmie KNN. Na podstawie wykresu dla jednokrotnego podziału zbioru danych wnioskujemy, że najniższy błąd osiągany jest dla k = \texttt{`r best_k`}. Z kolei analiza wyników uzyskanych metodą walidacji krzyżowej wskazuje, że optymalną wartością hiperparametru jest k = \texttt{`r best_k_CV`}. Obserwacje te potwierdzają znaczenie odpowiedniego doboru parametru 
+Rysunki \ref{fig:Classification error of KNN} oraz \ref{fig:cross validation for KNN} ilustrują estymowaną wartość błędu klasyfikacji w zależności od liczby sąsiadów k w algorytmie KNN. Na podstawie wykresu dla jednokrotnego podziału zbioru danych wnioskujemy, że najniższy błąd osiągany jest dla k = \texttt{`r knnfun$best_param`}. Z kolei analiza wyników uzyskanych metodą walidacji krzyżowej wskazuje, że optymalną wartością hiperparametru jest k = \texttt{`r result_knn$best_param`}. Obserwacje te potwierdzają znaczenie odpowiedniego doboru parametru 
 k oraz pokazują, że walidacja krzyżowa może dostarczyć bardziej wiarygodnych oszacowań błędu generalizacji.
+
 
