@@ -446,14 +446,14 @@ ggplot(pimaindians.long.df, aes(x = predictor, y = realization, fill = diabetes)
 ```
 Jak pokazano na rysunku \ref{fig:dyscrimination power analysis}, żadna ze zmiennych nie rozdziela klas docelowych w sposób idealny. Mimo to, można wyróżnić predyktory o wyraźnie silniejszych zdolnościach dyskryminacyjnych. Do takich atrybutów należą zmienne: 'glucose', 'insulin', 'triceps' oraz 'mass'. Natomiast najsłabszą zdolność separacji klas wykazują zmienne 'pedigree' oraz 'pressure'.
 
-# Ocena dokładności klasyfikacji i porównanie metod
+# Ocena dokładności klasyfikacji i porównanie metod {#wykresy}
 
 Celem niniejszej części analizy jest szczegółowe porównanie trzech wybranych algorytmów klasyfikacyjnych: K-najbliższych sąsiadów (KNN), naiwnego klasyfikatora Bayesowskiego oraz drzewa decyzyjnego. Aby zapewnić obiektywną i rzetelną ocenę skuteczności poszczególnych metod, wszystkie modele zostaną wytrenowane oraz przetestowane na tym samym podziale danych. Dzięki temu możliwe będzie bezpośrednie porównanie ich wyników, przy zachowaniu jednolitych warunków eksperymentu.
 
  
 ```{r dataset splitting}
 split_ratio <- 0.7
-
+set.seed(123)
 
 # Imputation by mean
 pimaindians.df <- pimaindians.df %>%
@@ -476,13 +476,12 @@ test.Y <- test_data[, c("diabetes")]  # Testing set of target variable
 
 ```{r KNN training, include = TRUE}
 # Build the KNN model
-KNN_build <- function(k){
-knn_pred <- knn(train = train.X, test = test.X, cl = train.Y, k = k)
-
-return (knn_pred)
+KNN_build <- function(train.X, test.X, train.Y, k){
+  knn_pred <- knn(train = train.X, test = test.X, cl = train.Y, k = k)
+  return (knn_pred)
 }
 
-knn_pred <- KNN_build(5)
+knn_pred <- KNN_build(train.X, test.X, train.Y, 5)
 ```
 
 ```{r classification tree, include=TRUE}
@@ -551,40 +550,50 @@ print(tree_result$plot)
 ```
 
 ```{r naive bayes evaluating, fig.cap = "Macierz pomyłek dla naiwnego klasyfikatora bayesa", include = TRUE}
-print(nb_result $plot)
+print(nb_result$plot)
 ```
 
+Analizując [macierze pomyłek](#wykresy) dla wybranych algorytmów można zauważyć, że najlepsze wyniki uzyskał algorytm KNN przy liczbie sąsiadów 'k=5'. Wartość precyzji tego modelu dla klasy 0 wynosi `r round(knn_result$precision.0,2)` natomiast dla klasy 1 - `r round(knn_result$precision.1,2)`. Wskazuje to na jego wysoką skuteczność w rozpoznawaniu zarówno dominującej, jak i mniejszościowej klasy. W porównaniu do pozostałych metod KNN popełnił najmniej błędów klasyfikacyjnych, co czyni go najbardziej trafnym algorytmem dla analizowanego przypadku.
 
-Jak przedstawiono na rysunku \ref{fig:KNN evaluating}, metoda KNN przy liczbie sąsiadów 'k = 5' nie osiąga zadowalających rezultatów. Wartość precyzji dla klasy 0 wynosi `r round(knn_result$precision.0,2)`, natomiast dla klasy 1 `r round(knn_result$precision.1,2)`. Uzyskane wyniki wskazują na niewystarczającą skuteczność modelu w obecnej konfiguracji, co skłania do dalszej analizy wpływu hiperparametru 'k' na jakość klasyfikacji.
+Drzewo decyzyjne osiągnęło nieco gorsze wyniki. Precyzja w tym przypadku wynosi `r round(tree_result$precision.0,2)` dla klasy 0 oraz `r round(tree_result$precision.1,2)` dla klasy 1. Choć jego skuteczność była niższa niż w przypadku KNN, to nadal pozostaje ona na akceptowalnym poziomie, szczególnie biorąc pod uwagę prostotę interpretacji struktury drzewa decyzyjnego.
 
-W tym celu porównamy błędy klasyfikacji algorytmu dla różnych wartości 'k', najpierw stosując jednokrotny podział danych na zbiór treningowy i testowy, a następnie wykorzystując walidację krzyżową. Podejście to pozwoli na bardziej obiektywną ocenę efektywności modelu w zależności od doboru liczby sąsiadów.
+Najniższą skuteczność wykazał naiwny klasyfikator Bayesa, który poprawnie rozpoznał `r round(nb_result$precision.0,2)` przypadków klasy 0 oraz `r round(nb_result$precision.1,2)` przypadków klasy 1. Chociaż jego wyniki są zbliżone do drzewa decyzyjnego, nie oferuje on wyraźnych przewag nad pozostałymi modelami.
 
+Warto jednak zwrócić uwagę, że zaprezentowane wyniki odnoszą się do konkretnej konfiguracji parametrów modeli. Można zatem sprawdzić, czy możliwe jest uzyskanie większej skuteczności po odpowiednim dobraniu parametrów w powyższych algorytmach. W tym celu porównamy błędy klasyfikacji algorytmu dla różnych wartości parametrów, najpierw stosując jednokrotny podział danych na zbiór treningowy i testowy, a następnie wykorzystując walidację krzyżową. Podejście to pozwoli na bardziej obiektywną ocenę efektywności modeli.
 
 
 ```{r classification error, include=TRUE}
-plot_classification_error <- function(param_values, model_function, param_name = "Parametr", model_label = "Model") {
-  
-  errors <- sapply(param_values, function(p) {
-    pred <- model_function(p)
-    mean(pred != test.Y)
+plot_classification_error_with_train <- function(param_values, model_function, param_name = "Parametr", model_label = "Model") {
+
+  errors <- lapply(param_values, function(p) {
+    preds <- model_function(p)
+    train_error <- mean(preds$train != train.Y)
+    test_error <- mean(preds$test != test.Y)
+    
+    return(data.frame(param = p, TrainError = train_error, TestError = test_error))
   })
   
-  df <- data.frame(param = param_values, CE = errors)
-  best_param <- df$param[which.min(df$CE)]
-  min_CE <- min(df$CE)
+  df <- do.call(rbind, errors)
+  df_long <- reshape2::melt(df, id.vars = "param", variable.name = "Dataset", value.name = "Error")
+ 
+  min_test_error <- min(df$TestError)
+  best_param <- df$param[which.min(df$TestError)]
   
-  p <- ggplot(df, aes(x = param, y = CE)) +
-    geom_line(color = "blue", size = 1) +
-    geom_point(color = "red", size = 1.8) +
-    geom_point(data = subset(df, param == best_param), aes(x = param, y = CE), 
-               color = "green", size = 2.5) +
+  highlight_point <- data.frame(param = best_param, Error = min_test_error, Dataset = "TestError")
+  
+  p <- ggplot(df_long, aes(x = param, y = Error, color = Dataset)) +
+    geom_line(size = 1) +
+    geom_point(size = 2) +
+    geom_point(data = highlight_point, aes(x = param, y = Error), 
+               color = "green", size = 4, shape = 18) +  # green point for the smallest error
     labs(
       title = paste("Błąd klasyfikacji w zależności od", param_name),
       subtitle = paste("Model:", model_label),
       x = param_name,
       y = "Błąd klasyfikacji"
     ) +
-    scale_x_continuous(breaks = param_values[seq(1, length(param_values), by = 2)]) +
+    scale_color_manual(values = c("TrainError" = "blue", "TestError" = "red"),
+                       labels = c("Zbiór treningowy", "Zbiór testowy")) +
     scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
     theme_minimal(base_size = 12) +
     theme(
@@ -592,116 +601,129 @@ plot_classification_error <- function(param_values, model_function, param_name =
       plot.subtitle = element_text(size = 11),
       axis.title = element_text(size = 12),
       axis.text = element_text(angle = 45, size = 10),
-      panel.grid.minor = element_blank()
+      legend.title = element_blank()
     )
+  
+
   return(list(
     plot = p,
-    best_param = best_param,
-    min_error = min_CE,
-    data = df
+    data = df,
+    min_test_error = min_test_error,
+    best_param = best_param
   ))
 }
+
 
 
 ```
 
 ```{r Classification error of KNN, include = TRUE, fig.cap = "Porównanie błędu klasyfikacji KNN dla różnych wartości hiperparametru k"}
-knnfun <- plot_classification_error(
-  param_values = 1:25,
-  model_function = KNN_build,
-  param_name = "Liczba sąsiadów (k)",
-  model_label = "KNN"
-)
+model_function_knn <- function(k) {
+  train_pred <- knn(train.X, train.X, cl = train.Y, k = k)
+  test_pred <- knn(train.X, test.X, cl = train.Y, k = k)
+  
+  return(list(train = train_pred, test = test_pred))
+}
 
-knnfun$plot
+result <- plot_classification_error_with_train(1:20, model_function_knn, param_name = "Liczba sąsiadów", model_label = "KNN")
+print(result$plot)
 
 ```
 
 
-```{r Classification error of the tree , include = TRUE, fig.cap = "Porównanie błędu klasyfikacji drzewa decyzyjnego dla różnych wartości parametru cp"}
+```{r Classification error of the tree, include = TRUE, fig.cap = "Porównanie błędu klasyfikacji drzewa decyzyjnego dla różnych wartości parametru cp"}
 
-Tree_build <- function(cp_value) {
-  model <- rpart(diabetes ~ ., data = train_data, method = "class",
+tree_model_function_cp <- function(cp_value) {
+  model <- rpart(train.Y ~ ., data = train.X, method = "class",
                  control = rpart.control(cp = cp_value))
-  predict(model, test.X, type = "class")
+  
+  train_pred <- predict(model, train.X, type = "class")
+  test_pred <- predict(model, test.X, type = "class")
+  
+  return(list(train = train_pred, test = test_pred))
 }
 
-treefun <- plot_classification_error(
-  param_values = seq(0.001, 0.05, by = 0.002),
-  model_function = Tree_build,
+result_cp <- plot_classification_error_with_train(
+  param_values = seq(0.0001, 0.05, by = 0.002),  # przykładowy zakres cp
+  model_function = tree_model_function_cp,
   param_name = "Parametr cp",
   model_label = "Drzewo decyzyjne"
 )
 
-treefun$plot
+# Wyświetlenie wykresu
+print(result_cp$plot)
 
 ```
 ```{r Classification naive bayes , include = TRUE, fig.cap = "Porównanie błędu klasyfikacji naiwnego klasyfikatora bayesowskiego dla różnych wartości parametru laplace"}
-NB_build <- function(laplace_value) {
-  model <- naiveBayes(diabetes ~ ., data = train_data, laplace = laplace_value)
-  predict(model, test.X)
+library(naivebayes)
+model_nb_adjust <- function(adjust_val) {
+  model <- naive_bayes(x = train.X, y = train.Y, usekernel = TRUE, adjust = adjust_val)
+  
+  pred_train <- predict(model, train.X)
+  pred_test <- predict(model, test.X)
+  
+  return(list(train = pred_train, test = pred_test))
 }
 
-nbfun <- plot_classification_error(
-  param_values = 0:5,
-  model_function = NB_build,
-  param_name = "Laplace smoothing",
-  model_label = "Naiwny klasyfikator Bayesa"
-)
+param_values <- seq(0.1, 2, by = 0.3)
 
-nbfun$plot
+result_nb <- plot_classification_error_with_train(param_values, model_nb_adjust,
+                                              param_name = "Adjust",
+                                              model_label = "Naive Bayes (kernel smoothing)")
+
+print(result_nb$plot)
 
 ```
 
 
 ```{r cross validation, include = TRUE}
-library(caret)
-library(ggplot2)
-library(scales)
-
 cv_model_error_plot <- function(train.X, train.Y, method, param_name, param_values,
                                 folds = 25, seed = 123, model_label = NULL) {
   
   train_data <- data.frame(X = train.X, Y = as.factor(train.Y))
-  
   ctrl <- trainControl(method = "cv", number = folds)
   
-  tune_grid <- data.frame(param_values)
-  colnames(tune_grid) <- param_name
+  tune_grid <- expand.grid(param_values)
+
   
+  if (length(param_name) == 1 && ncol(tune_grid) == 1) {
+    colnames(tune_grid) <- param_name
+  }
+
   set.seed(seed)
   model_cv <- train(Y ~ ., data = train_data,
                     method = method,
                     trControl = ctrl,
                     tuneGrid = tune_grid)
-  
+
   results <- model_cv$results
   results$ClassificationError <- 1 - results$Accuracy
-  
-  best_param <- results[[param_name]][which.min(results$ClassificationError)]
-  min_CE <- min(results$ClassificationError)
+
+  # Obsługa wyboru param_name do wykresu
+  best_row <- which.min(results$ClassificationError)
+  best_param_val <- results[[param_name]][best_row]
+  min_CE <- results$ClassificationError[best_row]
   
   if (is.null(model_label)) model_label <- method
   
   p <- ggplot(results, aes_string(x = param_name, y = "ClassificationError")) +
     geom_line(color = "blue") +
     geom_point(color = "red", size = 2.5) + 
-    geom_point(data = subset(results, results[[param_name]] == best_param),
+    geom_point(data = subset(results, results[[param_name]] == best_param_val),
                aes_string(x = param_name, y = "ClassificationError"),
                color = "green", size = 2.5) +
     labs(title = paste("Błąd klasyfikacji w cross-validation dla", model_label),
          x = param_name,
          y = "Błąd klasyfikacji") +
-    scale_y_continuous(labels = percent_format(accuracy = 1)) +
+    scale_y_continuous(labels = scales::percent_format(accuracy = 1)) +
     theme_minimal()
   
   return(list(
-    best_param = best_param,
+    best_param = best_param_val,
     min_error = min_CE,
     plot = p
   ))
 }
-
 
 ```
 
@@ -730,17 +752,98 @@ print(result_tree$plot)
 
 ```{r cross validation for naive bayes, include = TRUE, fig.cap = "Porównanie błędu klasyfikacji naiwnego klasyfikatora bayesa dla różnych wartości parametru laplace z uwzględnieniem walidacji krzyżowej"}
 
-result_nb <- cv_model_error_plot(train.X, train.Y,
-  method = "nb",           
-  param_name = "fL",   
-  param_values = seq(0, 2, by = 0.5),
-  model_label = "Naive Bayes (Laplace smoothing)"
+param_grid <- expand.grid(
+  laplace = 1,
+  usekernel = TRUE,
+  adjust = seq(0.1, 2, by = 0.3)
 )
 
+result_cv_nb <- cv_model_error_plot(
+  train.X = train.X,
+  train.Y = train.Y,
+  method = "naive_bayes",
+  param_name = "adjust",
+  param_values = param_grid,
+  model_label = "Naive Bayes (adjust)"
+)
+
+print(result_cv_nb$plot)
 ```
 
 \newpage
-Rysunki \ref{fig:Classification error of KNN} oraz \ref{fig:cross validation for KNN} ilustrują estymowaną wartość błędu klasyfikacji w zależności od liczby sąsiadów k w algorytmie KNN. Na podstawie wykresu dla jednokrotnego podziału zbioru danych wnioskujemy, że najniższy błąd osiągany jest dla k = \texttt{`r knnfun$best_param`}. Z kolei analiza wyników uzyskanych metodą walidacji krzyżowej wskazuje, że optymalną wartością hiperparametru jest k = \texttt{`r result_knn$best_param`}. Obserwacje te potwierdzają znaczenie odpowiedniego doboru parametru 
-k oraz pokazują, że walidacja krzyżowa może dostarczyć bardziej wiarygodnych oszacowań błędu generalizacji.
+Na wykresie \ref{fig:Classification error of KNN} przedstawiono zależność błędu klasyfikacji od wartości hiperparametru k w algorytmie KNN. Najmniejszy błąd klasyfikacji dla zbioru testowego uzyskano dla k = `r result$best_param`, a jego wartość wynosiła `r round(result$min_test_error,2)`.
 
+Warto jednak zauważyć, że pojedynczy podział danych na zbiór treningowy i testowy może prowadzić do niestabilnych wyników – jest wrażliwy na sposób losowego podziału. Właśnie dlatego stosuje się walidację krzyżową, która uśrednia wyniki z wielu podziałów, co prowadzi do bardziej wiarygodnej oceny skuteczności modelu.
+
+W przypadku walidacji krzyżowej, najmniejszy błąd klasyfikacji osiągnięto dla k = `r result_knn$best_param`, a jego wartość wyniosła `r round(result_knn$min_error,2)`. Choć wynik z walidacji krzyżowej może być nieco gorszy w konkretnym przypadku, jego średnia efektywność w różnych scenariuszach jest wyższa, co czyni go bardziej reprezentatywnym.
+
+Na wykresie \ref{fig:Classification error of the tree} zaprezentowano wpływ wartości parametru cp (complexity parameter) na błąd klasyfikacji w drzewie decyzyjnym. Parametr ten określa minimalną wartość poprawy jakości podziału, wymaganą do wykonania kolejnego rozgałęzienia drzewa. Najniższy błąd klasyfikacji na zbiorze testowym zaobserwowano dla cp = `r round(result_cp$best_param,2)`, przy wartości błędu równej `r round(result_cp$min_test_error,2)`. Z kolei wyniki walidacji krzyżowej wskazują, że optymalna średnia wartość parametru to `r round(result_tree$best_param,2)`, dla której błąd klasyfikacji wyniósł `r round(result_tree$min_error,2)`.
+
+Dla naiwnego klasyfikatora Bayesa analizowano wpływ parametru adjust, regulującego stopień wygładzania przy estymacji rozkładów jądrowych. Najlepszy wynik na zbiorze testowym osiągnięto przy adjust = `r result_nb$best_param`, a odpowiadający mu błąd klasyfikacji wyniósł `r round(result_nb$min_test_error,2)`. Z kolei walidacja krzyżowa wykazała, że najniższy błąd klasyfikacji (`r round(result_cv_nb$min_error,2)`) uzyskano przy adjust = `r result_cv_nb$best_param`.
+
+## Nowy podzbiór zmiennych
+
+Na podstawie wstępnej analizy zdolności dyskryminacyjnych zmiennych ze zbioru danych PimaIndiansDiabetes2, można wyodrębnić podzbiór cech najlepiej różnicujących obserwacje - w naszym przypadku będą to zmienne: "glucose", "mass" oraz "insulin". Taki podzbiór następnie posłuży do kontynuacji porównania skuteczności trzech wybranych algorytmów klasyfikacyjnych: k-najbliższych sąsiadów (k-NN), drzewa decyzyjnego oraz naiwnego klasyfikatora Bayesa.
+
+
+```{r new data set}
+split_ratio <- 0.7
+set.seed(123)
+
+pimaindians.df2 <- pimaindians.df[, c("glucose", "mass", "insulin", "diabetes")]
+
+train_indices <- sample(seq_len(nrow(pimaindians.df2)), size = split_ratio * nrow(pimaindians.df2))
+
+train_data <- pimaindians.df2[train_indices, ]
+test_data  <- pimaindians.df2[-train_indices, ]
+
+
+train.X <- train_data[, c("glucose", "mass", "insulin"), drop = FALSE]
+train.Y <- train_data[, c("diabetes")] 
+
+test.X <- test_data[, c("glucose", "mass", "insulin"), drop = FALSE] 
+test.Y <- test_data[, c("diabetes")]  
+```
+
+```{r KNN evaluating2, fig.cap = "Macierz pomyłek dla algorytmu KNN, k = 5, dla nowego podzbioru danych", include = TRUE}
+
+knn_pred <- KNN_build(train.X, test.X, train.Y, 5)
+
+knn_result <- plot_confusion_matrix(knn_pred, test.Y, model_name = "KNN", subtitle = "k = 5")
+print(knn_result$plot)
+
+
+```
+```{r tree evaluating2, fig.cap = "Macierz pomyłek dla drzewa klasyfikacyjnego dla nowego podzbioru danych", include = TRUE}
+
+tree_model <- rpart(diabetes ~ ., data = train_data, method = "class")
+tree_pred <- predict(tree_model, test.X, type = "class")
+tree_result <- plot_confusion_matrix(tree_pred, test.Y, model_name = "Drzewo decyzyjne")
+print(tree_result$plot)
+```
+```{r nb evaluating2, fig.cap = "Macierz pomyłek dla naiwnego klasyfikatora bayesa dla nowego podzbioru danych", include = TRUE}
+
+nb_model <- naiveBayes(x = train.X, y = train.Y)
+nb_pred <- predict(nb_model, newdata = test.X)
+nb_result   <- plot_confusion_matrix(nb_pred, test.Y, model_name = "Naiwny Bayes")
+print(nb_result$plot)
+
+```
+
+Po wybraniu nowego podzbioru, mimo że składa się on ze zmiennych o najlepszych własnościach dyskryminacyjnych, może dojść do pogorszenia jakości klasyfikacji w porównaniu do modelu trenowanego na pełnym zestawie cech.
+
+Redukcja liczby zmiennych oznacza utratę części informacji, która — choć może wydawać się mniej istotna pojedynczo — w połączeniu z innymi cechami pomaga modelowi lepiej rozróżniać klasy. Czasem dodatkowe zmienne zawierają wzorce lub korelacje, które poprawiają zdolność predykcyjną modelu.
+Dodatkowo zmniejszenie wymiarowości danych może wpływać na stabilność i uogólnialność modelu, zwłaszcza w przypadku metod takich jak k-najbliższych sąsiadów czy drzew decyzyjnych, które korzystają z pełnego obrazu przestrzeni cech.
+
+Warto jednak zauważyć, że mimo tych ograniczeń, modele: drzewa decyzyjnego oraz naiwny klasyfikator bayesa wyraźnie lepiej radzą sobie z klasyfikacją klasy 0 na ograniczonym podzbiorze cech. Szczególnie drzewo klasyfikacyjne osiąga wysoką dokładność — 'około 91%' — co sugeruje, że wybrane cechy istotnie wspierają rozpoznawanie tej klasy. Taki wynik wskazuje, że selekcja cech, choć powoduje pewną utratę ogólnej efektywności, może poprawić wydajność w kontekście konkretnych zadań lub klas.
+
+# Końcowe wnioski - podsumowanie
+
+Najlepsze wyniki uzyskano korzystając z pełnego zestawu zmiennych predykcyjnych, co pozwoliło modelom na wykorzystanie wszystkich dostępnych informacji. W przypadku algorytmu k-najbliższych sąsiadów (KNN) optymalna liczba sąsiadów wyniosła `r result_knn$best_param` (walidacja krzyżowa), co przełożyło się na najniższy błąd klasyfikacji `r round(result_knn$min_error, 2)`. Dla drzewa decyzyjnego najlepszą wartością parametru złożoności (cp) była `r round(result_tree$best_param, 2)`, a dla naiwnego klasyfikatora Bayesa optymalny stopień wygładzania (adjust) wyniósł `r result_cv_nb$best_param`.
+
+Selekcja podzbioru cech ograniczona do "glucose", "mass" oraz "insulin" poprawiła skuteczność klasyfikacji klasy 0, zwłaszcza w drzewie decyzyjnym, gdzie dokładność klasyfikacji tej klasy osiągnęła około 91%. Jednakże w przypadku pełnego zestawu cech modele osiągały lepsze ogólne wyniki, co wskazuje na wartość zachowania wszystkich dostępnych informacji.
+
+Najlepsze rezultaty w analizie uzyskał algorytm KNN, który charakteryzuje się największą precyzją oraz najniższym błędem klasyfikacji zarówno dla klasy dominującej (0), jak i mniejszościowej (1). Drzewo decyzyjne zapewnia wyniki na poziomie akceptowalnym, szczególnie dobrze radząc sobie z klasyfikacją klasy 0, co jest istotne w kontekście interpretowalności modelu. Naiwny klasyfikator Bayesa wykazał najniższą skuteczność, choć jego wyniki nadal pozostają zbliżone do wyników drzewa, co czyni go potencjalnie użytecznym w niektórych zastosowaniach.
+
+Wybór schematu oceny miał znaczący wpływ na wnioski dotyczące skuteczności poszczególnych metod. Wyniki uzyskane na podstawie jednokrotnego podziału danych były bardziej niestabilne i wrażliwe na losowość podziału, co mogło prowadzić do błędnych lub mylących wniosków. Wykorzystanie walidacji krzyżowej pozwoliło uśrednić wyniki z wielu podziałów, dzięki czemu ocena skuteczności modeli stała się bardziej rzetelna i reprezentatywna. W praktyce oznacza to, że parametry wybrane na podstawie walidacji krzyżowej lepiej generalizują na nowe, nieznane dane, a decyzje o wyborze najlepszych modeli są bardziej wiarygodne.
 
