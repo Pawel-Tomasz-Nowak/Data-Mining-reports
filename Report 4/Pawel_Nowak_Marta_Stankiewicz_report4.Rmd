@@ -1,0 +1,78 @@
+---
+title: "Sprawozdanie z listy 4"
+subtitle: "Eksploracja danych"
+author: "Marta Stankiewicz (282244)  \n Paweł Nowak (282223)"
+date: "`r Sys.Date()`"
+header-includes:
+   - \usepackage[OT4]{polski}
+   - \usepackage[utf8]{inputenc}
+   - \usepackage{graphicx}
+   - \usepackage{float}
+output: 
+  pdf_document:
+    toc: true
+    fig_caption: true
+    fig_width: 5 
+    fig_height: 4 
+    number_sections: true
+fontsize: 12pt 
+lof: true
+lot: true
+
+
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, cache = FALSE)
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, include = FALSE) 
+knitr::opts_chunk$set(fig.pos = "H", out.extra = '', fig.align = "center",
+                      fig.height = 4, fig.width =6)
+knitr::opts_chunk$set(dev.args = list(encoding = "CP1250.ENC"))
+
+```
+
+```{r libraries importing}
+# Import necessary librarries
+library(datasets)
+library(caret)
+library(reshape2)
+library(ggplot2)
+library(rlang)
+library(dplyr)
+library(tidyr)
+library(class)
+library(rpart)
+library(e1071)
+library(mlbench)
+library(ipred)
+```
+
+```{r, iris df loading & splitting}
+data("PimaIndiansDiabetes2")
+df <- PimaIndiansDiabetes2
+
+set.seed(123)
+
+
+n <- nrow(df)
+learning.set.index <- sample(1:n,2/3*n)
+
+train.df <- df[learning.set.index,]
+test.df     <- df[-learning.set.index,]
+```
+
+```{r single classifier }
+tree_model <- rpart(diabetes ~ ., data = train, method = "class")
+tree_preds <- predict(tree_model, test, type = "class")
+
+# Dokładność drzewa decyzyjnego
+tree_acc <- mean(tree_preds == test$diabetes)
+cat("Dokładność drzewa decyzyjnego:", round(tree_acc, 4), "\n")
+```
+```{r bagging, }
+bagging_model <- bagging(diabetes ~ ., data = train, coob = TRUE)
+bagging_preds <- predict(bagging_model, test)
+
+# Dokładność baggingu
+bagging_acc <- mean(bagging_preds == test$diabetes)
+cat("Dokładność baggingu:", round(bagging_acc, 4), "\n")
+```
