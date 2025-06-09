@@ -32,47 +32,124 @@ knitr::opts_chunk$set(dev.args = list(encoding = "CP1250.ENC"))
 
 ```{r libraries importing}
 # Import necessary librarries
-library(datasets)
+library(adabag)
 library(caret)
-library(reshape2)
-library(ggplot2)
-library(rlang)
-library(dplyr)
-library(tidyr)
 library(class)
-library(rpart)
+library(datasets)
+library(dplyr)
 library(e1071)
-library(mlbench)
+library(ggplot2)
 library(ipred)
+library(kableExtra)
+library(mlbench)
+library(knitr)
+library(randomForest)
+library(reshape2)
+library(rlang)
+library(rpart)
+library(tidyr)
 ```
 
-```{r, iris df loading & splitting}
+```{r, iris df loading}
 data("PimaIndiansDiabetes2")
-df <- PimaIndiansDiabetes2
+df <- PimaIndiansDiabetes2 # Wczytujemy dane
 
+n_iter <- 50 # Liczba powtórzeń (do walidacji krzyżowej)
 set.seed(123)
 
+n <- nrow(df) # Liczba obserwacji
+train.ratio = 0.8 # Odsetek obserwacji treningowych 
+df <- na.omit(df) # Usuwanie obserwacji z brakującymi wartościami
+```
+# Zaawansowane metody klasyfikacji
+## Rodziny klasyfikatorów/uczenie zespołowe
+Celem niniejszej analizy jest zbadanie wpływu metod zespołowych (ensemble learning) na jakość i stabilność klasyfikacji na przykładzie zbioru danych PimaIndiansDiabetes2. W szczególności skonstruujemy modele oparte na klasyfikatorze bazowym — drzewie decyzyjnym — oraz rozszerzymy je za pomocą trzech popularnych technik: baggingu, boostingu oraz random forest.
+Naszą hipotezą jest to, że zastosowanie tych metod zespołowych pozwoli na istotne zmniejszenie wariancji estymatora, co przełoży się na poprawę stabilności modelu oraz redukcję błędu klasyfikacji w porównaniu do pojedynczego drzewa decyzyjnego. Spodziewamy się, że agregacja wielu modeli (bagging i random forest) oraz sekwencyjne poprawianie błędów (boosting) przyczynią się do zwiększenia dokładności predykcji stanu zdrowia pacjentów.
+W dalszej części pracy przedstawimy wyniki eksperymentów, porównamy skuteczność poszczególnych metod oraz ocenimy, czy obserwowany spadek wariancji przekłada się na realną poprawę jakości klasyfikacji.
+Aby uzyskać rzetelną i stabilną estymatę błędu klasyfikacji dla każdej z wymienionych metod, proces uczenia oraz testowania modeli został powtórzony r n_iter razy. W każdej iteracji modele były trenowane na tym samym zbiorze treningowym, co pozwoliło na sprawiedliwe i porównywalne ocenienie skuteczności poszczególnych algorytmów. Dzięki temu możliwe było także zbadanie stabilności wyników oraz ocena wariancji błędu klasyfikacji dla każdej techniki.
 
-n <- nrow(df)
-learning.set.index <- sample(1:n,2/3*n)
+```{r bagging & boosting & base classifier error estimation, cache = TRUE}
+# Ramka danych z błędami dla każdej metody
+errors <- data.frame(
+  base = numeric(n_iter),
+  bagging = numeric(n_iter),
+  boosting = numeric(n_iter)
+)
 
-train.df <- df[learning.set.index,]
-test.df     <- df[-learning.set.index,]
+
+for (i in 1:n_iter) {
+  trainIndex <- createDataPartition(df$diabetes, p = train.ratio, list = FALSE)
+  train.df <- df[trainIndex, ]
+  test.df <- df[-trainIndex, ]
+
+  # 1. Klasyfikator bazowy (drzewo)
+  model_base <- rpart(diabetes ~ ., data = train.df, method = "class")
+  pred_base <- predict(model_base, test.df, type = "class")
+  errors$base[i] <- mean(pred_base != test.df$diabetes)
+
+  # 2. Bagging (Random Forest z mtry = liczba zmiennych)
+  model_bag <- randomForest(diabetes ~ ., data = train.df, mtry = ncol(train.df)-1)
+  pred_bag <- predict(model_bag, test.df)
+  errors$bagging[i] <- mean(pred_bag != test.df$diabetes)
+
+  # 3. Boosting (z adabag)
+  model_boost <- boosting(diabetes ~ ., data = train.df, boos = TRUE, mfinal = 45)
+  pred_boost <- predict.boosting(model_boost, newdata = test.df)
+  errors$boosting[i] <- mean(pred_boost$class != test.df$diabetes)
+}
+
 ```
 
-```{r single classifier }
-tree_model <- rpart(diabetes ~ ., data = train, method = "class")
-tree_preds <- predict(tree_model, test, type = "class")
+```{r bagging & boosting & base accuracy visualization, include = TRUE, fig.cap = "Porównanie skuteczności metod uczenia zespołowego"}
+# Zamieniamy ramkę błędów na postać długą
+errors.long <- pivot_longer(errors, cols = everything(),
+                            names_to = "Algorytm", 
+                            values_to = "Dokładność klasyfikacji")
 
-# Dokładność drzewa decyzyjnego
-tree_acc <- mean(tree_preds == test$diabetes)
-cat("Dokładność drzewa decyzyjnego:", round(tree_acc, 4), "\n")
-```
-```{r bagging, }
-bagging_model <- bagging(diabetes ~ ., data = train, coob = TRUE)
-bagging_preds <- predict(bagging_model, test)
 
-# Dokładność baggingu
-bagging_acc <- mean(bagging_preds == test$diabetes)
-cat("Dokładność baggingu:", round(bagging_acc, 4), "\n")
+
+p1 <- ggplot(errors.long, aes(y = !!sym("Dokładność klasyfikacji"), fill = !!sym("Algorytm"))) +
+  geom_boxplot(alpha = 0.8, outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
+  scale_fill_brewer(palette = "Set2") +               # ładna paleta kolorów
+  theme_minimal(base_size = 14) +                      # czysty i nowoczesny motyw
+  theme(
+    axis.title.x = element_blank(),                    # usuń tytuł osi X
+    axis.text.x = element_blank(),                     # usuń ticksy osi X
+    axis.ticks.x = element_blank(),                    # usuń tick marks osi X
+    legend.position = "top",                           # legenda u góry
+    legend.title = element_text(size = 14, face = "bold"),
+    legend.text = element_text(size = 12),
+    panel.grid.major.x = element_blank(),              # usuń pionowe linie siatki
+    panel.grid.minor.x = element_blank()
+  ) +
+  ylab("Dokładność klasyfikacji") +
+  guides(fill = guide_legend(title = "Algorytm"))
+
+print(p1)
 ```
+
+```{r bagging & boosting & base accuracy and variance comparison, tab.cap = "Porównanie dokładności i wariancji wybranych metod uczenia zespołowego", include = TRUE}
+# Oblicz dokładności i wariancje
+accuracies <- apply(errors, 2, mean)
+variances <- apply(errors, 2, var)
+
+# Połącz w jedną ramkę danych
+accuracies.variances <- rbind(Accuracy = accuracies,
+                              Variance = variances)
+
+# Konwersja na ramkę danych z ładnymi nazwami kolumn
+accuracies.variances <- as.data.frame(accuracies.variances)
+
+tabela <- kable(accuracies.variances, 
+      digits = 4, 
+      caption = "Średnia dokładność i wariancja dla każdej z metod klasyfikacyjnych") %>%
+  kable_styling(latex_options = c("striped", "hold_position", "scale_down"),
+                full_width = FALSE,
+                position = "center") %>%
+  row_spec(0, bold = TRUE) %>%
+  row_spec(1:2, italic = TRUE)
+```
+Z wykresu \ref{fig:bagging & boosting & base accuracy visualization} możemy wysunąć następujące wnioski. 
+
+
+
