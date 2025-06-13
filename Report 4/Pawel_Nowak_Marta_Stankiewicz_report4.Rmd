@@ -48,6 +48,8 @@ library(reshape2)
 library(rlang)
 library(rpart)
 library(tidyr)
+library(cluster)
+library(factoextra)
 ```
 
 ```{r, iris df loading}
@@ -153,3 +155,88 @@ Z wykresu \ref{fig:bagging & boosting & base accuracy visualization} możemy wys
 
 
 
+
+
+
+
+
+# Analiza skupień - algorytmy grupujące i hierarchiczne
+
+## Wybór i przygotowanie danych
+
+```{r preparing sample}
+set.seed(123)
+df_sample <- df[sample(nrow(df), 200), ]
+true_labels <- df_sample$diabetes
+df_sample_r <- subset(df_sample, select=-diabetes)
+df_sample_ready <- scale(df_sample_r)
+```
+
+Czy standaryzacja jest konieczna? Zaraz się pewnie okaże.
+
+
+```{r dissimilarity matrix}
+dissimilarity <- daisy(df_sample_ready)
+dis_matrix <- as.matrix(dissimilarity)
+
+# without order
+fviz_dist(dissimilarity, order = FALSE)
+# with order
+fviz_dist(dissimilarity, order = TRUE)
+
+```
+
+
+```{r pam method}
+df.pam <- pam(x=dissimilarity, diss=TRUE, k=2)
+# (summary(df.pam))
+```
+
+
+## Wizualizacja wyników grupowania
+
+```{r visualisation for pam method}
+mds_result <- cmdscale(dis_matrix, k = 2)
+mds_df <- data.frame(
+  Dim1 = mds_result[, 1],
+  Dim2 = mds_result[, 2],
+  Cluster = as.factor(df.pam$clustering),
+  TrueLabel = as.factor(true_labels)
+)
+
+ggplot(mds_df, aes(x = Dim1, y = Dim2, color = Cluster, shape = TrueLabel)) +
+  geom_point(size = 3, alpha = 0.8) +
+  labs(
+    title = "Wyniki klasteryzacji PAM (k=2) z rzeczywistymi etykietami",
+    x = "Wymiar 1 (MDS)",
+    y = "Wymiar 2 (MDS)",
+    color = "Klaster PAM",
+    shape = "Rzeczywista klasa"
+  ) +
+  theme_minimal()
+
+```
+
+```{r agnes linkage methods}
+df.agnes.avg <- agnes(x=dissimilarity, diss=TRUE, method="average")
+df.agnes.single <- agnes(x=dissimilarity, diss=TRUE, method="single")
+df.agnes.complete <- agnes(x=dissimilarity, diss=TRUE, method="complete")
+```
+
+```{r plot}
+X11()
+par(cex=0.5)
+plot(df.agnes.avg,which.plots=2,main="AGNES: average linkage")
+```
+
+```{r h}
+X11()
+par(cex=0.5)
+plot(df.agnes.single,which.plots=2,main="AGNES: single linkage")
+```
+
+```{r}
+X11()
+par(cex=0.5)
+plot(df.agnes.complete,which.plots=2, main="AGNES: complete linkage")
+```
