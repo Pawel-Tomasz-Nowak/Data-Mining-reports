@@ -50,13 +50,14 @@ library(rpart)
 library(tidyr)
 library(cluster)
 library(factoextra)
+library(kernlab)
 ```
 
 ```{r, iris df loading}
 data("PimaIndiansDiabetes2")
 df <- PimaIndiansDiabetes2 # Wczytujemy dane
 
-n_iter <- 50 # Liczba powtórzeń (do walidacji krzyżowej)
+n_iter <- 10 # Liczba powtórzeń (do walidacji krzyżowej)
 set.seed(123)
 
 n <- nrow(df) # Liczba obserwacji
@@ -68,11 +69,11 @@ df <- na.omit(df) # Usuwanie obserwacji z brakującymi wartościami
 Celem niniejszej analizy jest zbadanie wpływu metod zespołowych (ensemble learning) na jakość i stabilność klasyfikacji na przykładzie zbioru danych PimaIndiansDiabetes2. W szczególności skonstruujemy modele oparte na klasyfikatorze bazowym — drzewie decyzyjnym — oraz rozszerzymy je za pomocą trzech popularnych technik: baggingu, boostingu oraz random forest.
 Naszą hipotezą jest to, że zastosowanie tych metod zespołowych pozwoli na istotne zmniejszenie wariancji estymatora, co przełoży się na poprawę stabilności modelu oraz redukcję błędu klasyfikacji w porównaniu do pojedynczego drzewa decyzyjnego. Spodziewamy się, że agregacja wielu modeli (bagging i random forest) oraz sekwencyjne poprawianie błędów (boosting) przyczynią się do zwiększenia dokładności predykcji stanu zdrowia pacjentów.
 W dalszej części pracy przedstawimy wyniki eksperymentów, porównamy skuteczność poszczególnych metod oraz ocenimy, czy obserwowany spadek wariancji przekłada się na realną poprawę jakości klasyfikacji.
-Aby uzyskać rzetelną i stabilną estymatę błędu klasyfikacji dla każdej z wymienionych metod, proces uczenia oraz testowania modeli został powtórzony r n_iter razy. W każdej iteracji modele były trenowane na tym samym zbiorze treningowym, co pozwoliło na sprawiedliwe i porównywalne ocenienie skuteczności poszczególnych algorytmów. Dzięki temu możliwe było także zbadanie stabilności wyników oraz ocena wariancji błędu klasyfikacji dla każdej techniki.
+Aby uzyskać rzetelną i stabilną estymatę błędu klasyfikacji dla każdej z wymienionych metod, proces uczenia oraz testowania modeli został powtórzony `r n_iter` razy. W każdej iteracji modele były trenowane na tym samym zbiorze treningowym, co pozwoliło na sprawiedliwe i porównywalne ocenienie skuteczności poszczególnych algorytmów. Dzięki temu możliwe było także zbadanie stabilności wyników oraz ocena wariancji błędu klasyfikacji dla każdej techniki.
 
-```{r bagging & boosting & base classifier error estimation, cache = TRUE}
+```{r bagging & boosting & base classifier error estimation}
 # Ramka danych z błędami dla każdej metody
-errors <- data.frame(
+accuracies <- data.frame(
   base = numeric(n_iter),
   bagging = numeric(n_iter),
   boosting = numeric(n_iter)
@@ -87,30 +88,30 @@ for (i in 1:n_iter) {
   # 1. Klasyfikator bazowy (drzewo)
   model_base <- rpart(diabetes ~ ., data = train.df, method = "class")
   pred_base <- predict(model_base, test.df, type = "class")
-  errors$base[i] <- mean(pred_base != test.df$diabetes)
+  accuracies$base[i] <- mean(pred_base != test.df$diabetes)
 
   # 2. Bagging (Random Forest z mtry = liczba zmiennych)
   model_bag <- randomForest(diabetes ~ ., data = train.df, mtry = ncol(train.df)-1)
   pred_bag <- predict(model_bag, test.df)
-  errors$bagging[i] <- mean(pred_bag != test.df$diabetes)
+  accuracies$bagging[i] <- mean(pred_bag != test.df$diabetes)
 
   # 3. Boosting (z adabag)
   model_boost <- boosting(diabetes ~ ., data = train.df, boos = TRUE, mfinal = 45)
   pred_boost <- predict.boosting(model_boost, newdata = test.df)
-  errors$boosting[i] <- mean(pred_boost$class != test.df$diabetes)
+  accuracies$boosting[i] <- 1-mean(pred_boost$class != test.df$diabetes)
 }
 
 ```
 
-```{r bagging & boosting & base accuracy visualization, include = TRUE, fig.cap = "Porównanie skuteczności metod uczenia zespołowego"}
+```{r bagging & boosting & base accuracy visualization, fig.cap="Porównanie skuteczności metod uczenia zespołowego", cache=TRUE, include=TRUE, results= "hide"}
 # Zamieniamy ramkę błędów na postać długą
-errors.long <- pivot_longer(errors, cols = everything(),
+accuracies.long <- pivot_longer(accuracies, cols = everything(),
                             names_to = "Algorytm", 
                             values_to = "Dokładność klasyfikacji")
 
 
 
-p1 <- ggplot(errors.long, aes(y = !!sym("Dokładność klasyfikacji"), fill = !!sym("Algorytm"))) +
+p1 <- ggplot(accuracies.long, aes(y = !!sym("Dokładność klasyfikacji"), fill = !!sym("Algorytm"))) +
   geom_boxplot(alpha = 0.8, outlier.colour = "red", outlier.shape = 16, outlier.size = 2) +
   scale_fill_brewer(palette = "Set2") +               # ładna paleta kolorów
   theme_minimal(base_size = 14) +                      # czysty i nowoczesny motyw
@@ -124,25 +125,29 @@ p1 <- ggplot(errors.long, aes(y = !!sym("Dokładność klasyfikacji"), fill = !!
     panel.grid.major.x = element_blank(),              # usuń pionowe linie siatki
     panel.grid.minor.x = element_blank()
   ) +
-  ylab("Dokładność klasyfikacji") +
+  ylab("Dokładność klasyfikacji") 
   guides(fill = guide_legend(title = "Algorytm"))
-
+  
 print(p1)
 ```
 
-```{r bagging & boosting & base accuracy and variance comparison, tab.cap = "Porównanie dokładności i wariancji wybranych metod uczenia zespołowego", include = TRUE}
+Na podstawie wykresu \ref{fig:bagging & boosting & base accuracy visualization} można sformułować kilka istotnych wniosków dotyczących porównywanych klasyfikatorów. Najwyższą średnią dokładnością charakteryzuje się metoda boosting, która wyraźnie przewyższa zarówno bagging, jak i klasyfikator bazowy. Co więcej, dla boostingu nie zaobserwowano wartości odstających w estymacjach dokładności, co dodatkowo świadczy o jego wysokiej stabilności.
+
+Metoda bagging okazała się nieznacznie mniej skuteczna niż klasyfikator bazowy pod względem średniej dokładności, co może być zaskakujące w kontekście ogólnej skuteczności metod zespołowych. Warto jednak zwrócić uwagę, że wariancje wszystkich trzech podejść są do siebie bardzo zbliżone, co potwierdzają dane zawarte w tabeli \ref{tab:bagging & boosting & base accuracy and variance comparison}.
+
+```{r bagging & boosting & base accuracy and variance comparison, tab.cap="Porównanie dokładności i wariancji wybranych metod uczenia zespołowego", include = TRUE}
 # Oblicz dokładności i wariancje
-accuracies <- apply(errors, 2, mean)
-variances <- apply(errors, 2, var)
+accuracies.df <- apply(accuracies, 2, mean)
+variances.df <- apply(accuracies, 2, var)
 
 # Połącz w jedną ramkę danych
-accuracies.variances <- rbind(Accuracy = accuracies,
-                              Variance = variances)
+accuracies.and.variances <- rbind(Accuracy = accuracies.df,
+                              Variance = variances.df)
 
 # Konwersja na ramkę danych z ładnymi nazwami kolumn
-accuracies.variances <- as.data.frame(accuracies.variances)
+accuracies.variances <- as.data.frame(accuracies.and.variances)
 
-tabela <- kable(accuracies.variances, 
+kable(accuracies.and.variances, 
       digits = 4, 
       caption = "Średnia dokładność i wariancja dla każdej z metod klasyfikacyjnych") %>%
   kable_styling(latex_options = c("striped", "hold_position", "scale_down"),
@@ -151,14 +156,266 @@ tabela <- kable(accuracies.variances,
   row_spec(0, bold = TRUE) %>%
   row_spec(1:2, italic = TRUE)
 ```
-Z wykresu \ref{fig:bagging & boosting & base accuracy visualization} możemy wysunąć następujące wnioski. 
+
+## Metoda wektorów nośnych (SVM)
+W niniejszym podrozdziale przeanalizowana zostanie skuteczność jednego z bardziej zaawansowanych algorytmów klasyfikacyjnych — metody wektorów nośnych (ang. Support Vector Machine, SVM). W celu zapewnienia wszechstronności analizy, uwzględniono wpływ różnych funkcji jądra (liniowego, wielomianowego oraz radialnego) na jakość klasyfikacji. Dodatkowo rozważono, w jakim stopniu zmiana wartości parametru kosztu (ang. cost) przekłada się na dokładność działania algorytmu. Takie podejście pozwala lepiej zrozumieć, jak poszczególne konfiguracje SVM wpływają na efektywność klasyfikatora w kontekście analizowanego zbioru danych.
 
 
+```{r SVM training & testing}
+k <- 10
+kernels <- c("svmLinear", "svmPoly", "svmRadial")
+costs <- c(0.1, 1, 10)
+
+results_df <- data.frame(Accuracy = numeric(),
+                         Kernel = character(),
+                         Cost = numeric(),
+                         stringsAsFactors = FALSE)
+
+train.ratio <- 0.7
+
+for (i in 1:k) {
+  trainIndex <- createDataPartition(df$diabetes, p = train.ratio, list = FALSE)
+  train.df <- df[trainIndex, ]
+  test.df <- df[-trainIndex, ]
+
+  for (kernel_type in kernels) {
+    for (cost_value in costs) {
+
+      current_tuneGrid <- NULL
+      if (kernel_type == "svmPoly") {
+        current_tuneGrid <- data.frame(degree = 2, scale = 1, C = cost_value)
+      } else if (kernel_type == "svmRadial") {
+        current_tuneGrid <- data.frame(sigma = 0.1, C = cost_value)
+      } else { # svmLinear
+        current_tuneGrid <- data.frame(C = cost_value)
+      }
+
+      model_svm <- train(diabetes ~ ., data = train.df,
+                         method = kernel_type,
+                         trControl = trainControl(method = "none"),
+                         tuneGrid = current_tuneGrid)
+
+      predictions <- predict(model_svm, newdata = test.df)
+      accuracy <- postResample(predictions, test.df$diabetes)["Accuracy"]
+
+      results_df <- rbind(results_df, data.frame(Accuracy = accuracy,
+                                                 Kernel = kernel_type,
+                                                 Cost = cost_value))
+    }
+  }
+}
+# Kasowanie nazw wierszy
+rownames(results_df) <- NULL
+
+# Zamiana nazw jąder
+results_df$Kernel <- dplyr::recode(results_df$Kernel,
+                                   "svmLinear" = "Linear",
+                                   "svmPoly" = "Polynomial",
+                                   "svmRadial" = "Radial")
+
+results_df
+```
 
 
+```{r SVM accuracy visualization, include = TRUE, fig.cap = "Porównanie wyników klasyfikacji SVM dla różnych jąder i parametrów kosztu"}
+
+ggplot(results_df, aes(x = as.factor(Cost), y = Accuracy, fill = Kernel)) +
+  geom_boxplot(position = position_dodge(width = 0.9), width = 0.7, alpha = 0.8) +
+  stat_summary(fun = median, geom = "point",
+               position = position_dodge(width = 0.9),
+               shape = 20, size = 3, color = "black") +
+  labs(title = "Dokladnosc SVM: jadra wzgledem parametru cost",
+       x = "Parametr cost",
+       y = "Dokladnosc",
+       fill = "Typ jadra") +
+  theme_minimal(base_size = 14) +
+  theme(legend.position = "top") +
+  # Nowa linia: Zwiększenie marginesów na osi X
+  scale_x_discrete(expand = c(0, 0.01)) # Zwiększ drugą wartość,
+```
+Na podstawie wykresu \ref{fig:SVM accuracy visualization} można zauważyć, że dla każdej rozważanej wartości parametru kosztu najwyższą medianę dokładności osiąga klasyfikator SVM z jądrem liniowym. Wskazuje to na jego dobrą skuteczność niezależnie od przyjętej wartości parametru regularyzacji.
+
+Największą niestabilnością, rozumianą jako duży rozrzut wyników, cechuje się natomiast metoda wykorzystująca jądro wielomianowe stopnia drugiego. Co istotne, dokładność tej konfiguracji systematycznie spada wraz ze wzrostem wartości parametru kosztu, co może świadczyć o podatności na przeuczenie w przypadku zbyt wysokiej penalizacji błędów.
+
+Z kolei najbardziej stabilne wyniki — przy stosunkowo niskiej zmienności — uzyskuje klasyfikator oparty na jądrze radialnym. Biorąc pod uwagę właśnie ten aspekt, SVM z jądrem RBF (radialnym) można uznać za najpewniejsze rozwiązanie pod względem powtarzalności działania.
 
 
+## Strojenie hiperparametrów modelu SVM
+Dla klasyfikatora SVM z jądrem radialnym przeprowadzono proces strojenia parametrów: kosztu (C) oraz gamma, w celu oceny, czy dostrajanie prowadzi do istotnego wzrostu dokładności modelu oraz redukcji jego wariancji. Wykres \ref{fig:tuned SVM accuracy visualization} przedstawia wykres pudełkowy, który umożliwia wizualną ocenę zarówno stabilności, jak i skuteczności klasyfikatora po strojeniu.
 
+Aby umożliwić bardziej obiektywną ocenę wpływu strojenia, porównano wyniki uzyskane przez model dostrojony z rezultatami modelu niedostrojonego — dla tych samych wartości parametru C, przy domyślnej wartości gamma. Wyniki tej analizy zostały zestawione w tabeli \ref{tab:untuned and tuned SVM comparison vol 2}.
+
+
+```{r SVM tuning}
+k <- 10 # Liczba foldów
+# Definiowanie siatki parametrów do przetestowania
+tune_grid_radial <- expand.grid(
+  .sigma = c(0.01, 0.05, 0.1, 0.2, 0.5, 1), # Przykładowe wartości dla sigma (gamma)
+  .C = c(0.1, 1, 10, 100)               # Przykładowe wartości dla C (kosztu)
+)
+
+
+# Konfiguracja walidacji krzyżowej
+fitControl <- trainControl(
+  method = "cv",          # Metoda: walidacja krzyżowa
+  number = k,            # Liczba foldów
+  summaryFunction = defaultSummary, # Domyślne metryki (Accuracy, Kappa)
+  classProbs = TRUE,      # Zwracaj prawdopodobieństwa klas
+  verboseIter = FALSE     # Nie pokazuj postępu każdej iteracji
+)
+
+
+# Trenowanie modelu SVM z jądrem radialnym i jednoczesnym strojeniem
+# parametrów sigma i C
+model_radial_tuned <- train(
+  diabetes ~ .,
+  data = df,
+  method = "svmRadial", # Określamy jądro radialne
+  preProcess = c("center", "scale"), # Ważne dla SVM z jądrem radialnym: skalowanie danych
+  tuneGrid = tune_grid_radial, # Nasza siatka parametrów do przetestowania
+  trControl = fitControl  # Używamy skonfigurowanej walidacji krzyżowej
+)
+```
+
+```{r tuned SVM accuracy estimation}
+# Dynamiczne pobieranie najlepszych hiperparametrów
+best_sigma <- model_radial_tuned$bestTune$sigma
+best_C <- model_radial_tuned$bestTune$C
+
+k <- 10 # Liczba foldów walidacji krzyżowej
+
+tuned_results_df <- data.frame(
+  Iteration = integer(),
+  Accuracy = numeric(),
+  stringsAsFactors = FALSE
+)
+
+# Konfiguracja tuneGrid z dynamicznie dobranymi najlepszymi parametrami
+final_tune_grid <- data.frame(
+  sigma = best_sigma,
+  C = best_C
+)
+
+# Konfiguracja kontroli trenowania dla *każdego folda* walidacji
+train_control_for_fold <- trainControl(
+  method = "none", # Brak wewnętrznego strojenia
+  classProbs = TRUE,
+  verboseIter = FALSE
+)
+
+# Pętla dla k-krotnej walidacji krzyżowej
+for (i in 1:k) {
+  train_index <- createDataPartition(df$diabetes, p = 0.8, list = FALSE)
+  train_data <- df[train_index, ]
+  test_data <- df[-train_index, ]
+
+  model_stable_svm <- train(
+    diabetes ~ .,
+    data = train_data,
+    method = "svmRadial",
+    preProcess = c("center", "scale"),
+    tuneGrid = final_tune_grid,
+    trControl = train_control_for_fold
+  )
+
+  predictions <- predict(model_stable_svm, newdata = test_data)
+  accuracy <- postResample(predictions, test_data$diabetes)["Accuracy"]
+
+  tuned_results_df <- rbind(tuned_results_df, data.frame(Iteration = i, Accuracy = accuracy))
+}
+```
+
+
+```{r tuned SVM accuracy visualization, include = TRUE, fig.cap = "Porównanie dokładności i stabilności dostrojonego SVM opartego na jądrze radialnym"}
+min_accuracy <- min(tuned_results_df$Accuracy)
+max_accuracy <- max(tuned_results_df$Accuracy)
+sd_accuracy <- sd(tuned_results_df$Accuracy)
+
+y_min_dynamic <- max(0, min_accuracy - 0.5 * sd_accuracy)
+y_max_dynamic <- min(1, max_accuracy + 0.5 * sd_accuracy)
+
+
+ggplot(tuned_results_df, aes(x = "Walidacja Krzyzowa", y = Accuracy)) +
+  geom_boxplot(fill = "#8DA0CB", alpha = 0.8, width = 0.5) +
+  labs(title = "Dokładnosc dostrojonego algorytmu SVM\n opartego na jadrze radialnym",
+       x = NULL,
+       y = "Dokładnosc (Accuracy)") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_blank(),
+    axis.ticks.x = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor = element_blank()
+  ) +
+  coord_cartesian(ylim = c(y_min_dynamic, y_max_dynamic))
+```
+
+```{r untuned and tuned SVM comparison vol 1}
+# Oblicz średnią i odchylenie standardowe dla niedostrojonych modeli radialnych
+untuned_mean_and_sd <- results_df %>%
+  filter(Kernel == "Radial") %>%
+  group_by(Cost) %>% # Grupujemy tylko po Cost
+  summarise(mean_accuracy = mean(Accuracy), sd_accuracy = sd(Accuracy), .groups = 'drop')
+
+# Oblicz średnią i odchylenie standardowe dla dostrojonego SVM
+tuned_mean_accuracy <- mean(tuned_results_df$Accuracy) 
+tuned_sd_accuracy <- sd(tuned_results_df$Accuracy)
+
+# Dodaj kolumnę 'tuning' do niedostrojonych wyników
+untuned_mean_and_sd$tuning <- "untuned"
+
+# Dołącz statystyki dostrojonego modelu
+means_and_sds <- untuned_mean_and_sd %>%
+  bind_rows(
+    data.frame(
+      Cost = best_C, # Zakładamy, że best_C jest dostępne z poprzednich kroków
+      mean_accuracy = tuned_mean_accuracy,
+      sd_accuracy = tuned_sd_accuracy,
+      tuning = "tuned"
+    )
+  )
+```
+
+```{r untuned and tuned SVM comparison vol 2, include = TRUE, tab.cap = "Porównanie dokładności i stabilności dostrojonego i niedostrojonego SVM"}
+means_and_sds_prettified <- means_and_sds %>%
+  rename(
+    `Parametr C` = Cost,
+    `Średnia Dokładność` = mean_accuracy,
+    `Odchylenie Standardowe` = sd_accuracy,
+    `Typ strojenia` = tuning
+  ) %>%
+  mutate(
+    `Średnia Dokładność` = round(`Średnia Dokładność`, 4),
+    `Odchylenie Standardowe` = round(`Odchylenie Standardowe`, 4)
+  )
+
+means_and_sds_prettified %>%
+  kable(
+    caption = "Porównanie dokładności SVM z jądrem radialnym",
+    align = "lccr",
+    format = "latex"
+  ) %>%
+  kable_styling(
+    bootstrap_options = c("striped", "hover", "condensed", "responsive"),
+    full_width = FALSE,
+    position = "center"
+  ) %>%
+  row_spec(
+    which(means_and_sds_prettified$`Typ strojenia` == "tuned"),
+    bold = TRUE,
+    color = "white",
+    background = "#2C3E50"
+  )
+```
+Jak pokazują wyniki zawarte w tabeli \ref{tab:untuned and tuned SVM comparison vol 2}, średnia dokładność dostrojonego modelu SVM jest nieco niższa niż maksymalna dokładność osiągnięta wśród wszystkich konfiguracji przedstawionych w tabeli. Warto jednak zaznaczyć, że dostrojony model charakteryzuje się stosunkowo wysoką wariancją, co potwierdza konieczność podjęcia kompromisu między obciążonością modelu, a jego wariancją.
+
+Ostateczny wybór modelu zależy więc od priorytetów — czy zależy nam bardziej na maksymalizacji średniej dokładności, czy może na uzyskaniu większej stabilności i przewidywalności wyników. Jest to klasyczny przykład kompromisu (ang. trade-off) pomiędzy skutecznością a niezawodnością działania modelu.
+
+
+## Wybór najskuteczniejszego modelu
+Wybór najskuteczniejszego modelu klasyfikacyjnego jest w dużej mierze kwestią subiektywną i zależy od przyjętego kryterium oceny. Można bowiem kierować się różnymi aspektami — takimi jak wysoka średnia dokładność klasyfikacji, bądź niska wariancja, która świadczy o stabilności modelu.
+
+W niniejszej analizie jako główne kryterium przyjęto wysoką skuteczność klasyfikacyjną. W oparciu o to założenie, najlepszym rozwiązaniem okazała się metoda boosting, zastosowana w połączeniu z drzewem decyzyjnym jako klasyfikatorem bazowym. Zarówno jej skuteczność, jak i stabilność zostały przedstawione na wykresie \ref{fig:bagging & boosting & base accuracy visualization}.
 
 # Analiza skupień - algorytmy grupujące i hierarchiczne
 
