@@ -559,29 +559,42 @@ library(e1071)
 library(cluster)
 
 
+# Upewnij się, że true_labels zaczyna się od 1
 if (any(true_labels == 0)) {
   true_labels_matched <- true_labels + 1  
 } else {
   true_labels_matched <- true_labels
 }
 
+
+# Upewnij się, że true_labels_matched to numeric 1,2,...
+true_labels_matched <- as.numeric(as.factor(true_labels))
+
+# Wyznaczenie etykiet klastrowania
 labels_avg <- cutree(df.agnes.avg, k = 2)
 labels_single <- cutree(df.agnes.single, k = 2)
 labels_complete <- cutree(df.agnes.complete, k = 2)
 labels_pam <- df.pam$clustering
 
-
+# Dopasowanie klas — zwracają named vector, np. c("neg" = 1, "pos" = 2)
 matched_avg <- matchClasses(table(true_labels_matched, labels_avg), method = "exact")
 matched_single <- matchClasses(table(true_labels_matched, labels_single), method = "exact")
 matched_complete <- matchClasses(table(true_labels_matched, labels_complete), method = "exact")
 matched_pam <- matchClasses(table(true_labels_matched, labels_pam), method = "exact")
 
+# Funkcja do mapowania liczbowych etykiet klastrów na nazwy z matched_
+map_labels <- function(cluster_labels, matched) {
+  named <- factor(cluster_labels, levels = seq_along(matched), labels = names(matched))
+  matched[as.character(named)]
+}
 
-labels_avg_matched <- matched_avg[labels_avg]
-labels_single_matched <- matched_single[labels_single]
-labels_complete_matched <- matched_complete[labels_complete]
-labels_pam_matched <- matched_pam[labels_pam]
+# Zamiana etykiet na dopasowane
+labels_avg_matched <- map_labels(labels_avg, matched_avg)
+labels_single_matched <- map_labels(labels_single, matched_single)
+labels_complete_matched <- map_labels(labels_complete, matched_complete)
+labels_pam_matched <- map_labels(labels_pam, matched_pam)
 
+# Obliczenie dokładności
 accuracy_avg <- mean(labels_avg_matched == true_labels_matched)
 accuracy_single <- mean(labels_single_matched == true_labels_matched)
 accuracy_complete <- mean(labels_complete_matched == true_labels_matched)
@@ -589,15 +602,14 @@ accuracy_pam <- mean(labels_pam_matched == true_labels_matched)
 
 results <- data.frame(
   Algorithm = c("AGNES (average)", "AGNES (single)", "AGNES (complete)", "PAM"),
-  Accuracy = c(accuracy_avg, accuracy_single, accuracy_complete, accuracy_pam)
-)
+  Accuracy = c(accuracy_avg, accuracy_single, accuracy_complete, accuracy_pam))
 
 
-kable(results, 
+kable(results,
       caption = "Porównanie dokładności (accuracy) algorytmów grupowania",
       col.names = c("Algorytm", "Dokładność (Accuracy)"),
       digits = 3) %>%
-  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
                 full_width = FALSE)
 
 ```
