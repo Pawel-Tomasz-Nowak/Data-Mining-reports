@@ -417,6 +417,8 @@ Wybór najskuteczniejszego modelu klasyfikacyjnego jest w dużej mierze kwestią
 
 W niniejszej analizie jako główne kryterium przyjęto wysoką skuteczność klasyfikacyjną. W oparciu o to założenie, najlepszym rozwiązaniem okazała się metoda boosting, zastosowana w połączeniu z drzewem decyzyjnym jako klasyfikatorem bazowym. Zarówno jej skuteczność, jak i stabilność zostały przedstawione na wykresie \ref{fig:bagging & boosting & base accuracy visualization}.
 
+\newpage
+
 # Analiza skupień - algorytmy grupujące i hierarchiczne
 
 ## Wybór i przygotowanie danych
@@ -440,10 +442,6 @@ df_sample_ready <- scale(df_sample_r)
 ```{r dissimilarity matrix}
 dissimilarity <- daisy(df_sample_ready)
 dis_matrix <- as.matrix(dissimilarity)
-
-# with order
-fviz_dist(dissimilarity, order = TRUE)
-
 ```
 
 
@@ -510,7 +508,7 @@ Podsumowując, metoda complete linkage wydaje się najskuteczniejsza w kontekśc
 ## Ocena jakości grupowania. Wybór optymalnej liczby skupień i porównanie metod
 
 
-```{r silhouette comparison, include=TRUE}
+```{r silhouette comparison, include=TRUE, fig.cap="Porównanie algorytmów ze względu na średnią wartość indeksu silhouette"}
 library(cluster) 
 library(clValid)
 
@@ -554,12 +552,11 @@ ggplot(results, aes(x = K, y = Silhouette, color = Method)) +
 ```
 
 
-```{r accuracy, include=TRUE, tab.cap="Porównanie zgodności partycji dla metod AGNES oraz PAM"}
+```{r accuracy}
 library(e1071)
 library(cluster)
 
 
-# Upewnij się, że true_labels zaczyna się od 1
 if (any(true_labels == 0)) {
   true_labels_matched <- true_labels + 1  
 } else {
@@ -567,34 +564,32 @@ if (any(true_labels == 0)) {
 }
 
 
-# Upewnij się, że true_labels_matched to numeric 1,2,...
 true_labels_matched <- as.numeric(as.factor(true_labels))
 
-# Wyznaczenie etykiet klastrowania
 labels_avg <- cutree(df.agnes.avg, k = 2)
 labels_single <- cutree(df.agnes.single, k = 2)
 labels_complete <- cutree(df.agnes.complete, k = 2)
 labels_pam <- df.pam$clustering
 
-# Dopasowanie klas — zwracają named vector, np. c("neg" = 1, "pos" = 2)
+
 matched_avg <- matchClasses(table(true_labels_matched, labels_avg), method = "exact")
 matched_single <- matchClasses(table(true_labels_matched, labels_single), method = "exact")
 matched_complete <- matchClasses(table(true_labels_matched, labels_complete), method = "exact")
 matched_pam <- matchClasses(table(true_labels_matched, labels_pam), method = "exact")
 
-# Funkcja do mapowania liczbowych etykiet klastrów na nazwy z matched_
+
 map_labels <- function(cluster_labels, matched) {
   named <- factor(cluster_labels, levels = seq_along(matched), labels = names(matched))
   matched[as.character(named)]
 }
 
-# Zamiana etykiet na dopasowane
+
 labels_avg_matched <- map_labels(labels_avg, matched_avg)
 labels_single_matched <- map_labels(labels_single, matched_single)
 labels_complete_matched <- map_labels(labels_complete, matched_complete)
 labels_pam_matched <- map_labels(labels_pam, matched_pam)
 
-# Obliczenie dokładności
+
 accuracy_avg <- mean(labels_avg_matched == true_labels_matched)
 accuracy_single <- mean(labels_single_matched == true_labels_matched)
 accuracy_complete <- mean(labels_complete_matched == true_labels_matched)
@@ -605,6 +600,10 @@ results <- data.frame(
   Accuracy = c(accuracy_avg, accuracy_single, accuracy_complete, accuracy_pam))
 
 
+```
+
+
+```{r accuracy table, include=TRUE, tab.cap="Porównanie zgodności partycji dla metod AGNES oraz PAM dla k=2"}
 kable(results,
       caption = "Porównanie dokładności (accuracy) algorytmów grupowania",
       col.names = c("Algorytm", "Dokładność (Accuracy)"),
@@ -614,3 +613,96 @@ kable(results,
 
 ```
 
+Z przedstawionych na wykresie \ref{fig:silhouette comparison} wyników wynika, że najbardziej optymalną liczbą klastrów dla analizowanych danych jest k=2. Wartość współczynnika silhouette osiąga w tym przypadku maksimum dla większości zastosowanych metod, wskazując na najlepszą separację i spójność grup. W związku z tym, w dalszej analizie skupiono się na ocenie jakości grupowania dla dwóch klastrów, wykorzystując miarę zgodności partycji (funkcja matchClasses() z pakietu e1071). Jak pokazują wyniki w tabeli \ref{tab:accuracy table}, najwyższą dokładność w odtwarzaniu rzeczywistej struktury klasowej osiągnął algorytm AGNES z metodą łączenia average.
+
+Choć dendrogram dla metody complete linkage sugerował wyraźniejsze rozdzielenie grup, to metoda average linkage okazała się skuteczniejsza w praktycznej ocenie. Może to wynikać z faktu, że average linkage, opierając się na średnich odległościach między obiektami, lepiej radzi sobie z różnicami w gęstościach rozmieszczenia punktów i jest mniej podatna na wpływ obserwacji odstających niż complete linkage wykorzystujący maksymalne odległości.
+
+
+## Interpretacja wyników grupowania – charakterystyki skupień
+
+W oparciu o wcześniejsze analizy (współczynnik silhouette, dokładność dopasowania) przyjęto K=2 jako optymalną liczbę skupień. Aby zrozumieć różnice między skupieniami, porównano średnie wartości cech oraz rozkłady (wykresy pudełkowe) wybranych z nich.
+
+
+```{r comparison}
+agnes_avg <- agnes(df_sample_r, method = "average")
+clusters <- cutree(agnes_avg, k = 2)  # Zakładamy K=2 jako optymalne
+df_with_clusters <- data.frame(df_sample_r, Cluster = as.factor(clusters))
+
+cluster_means <- df_with_clusters %>%
+  group_by(Cluster) %>%
+  summarise(across(everything(), ~round(mean(.x, na.rm = TRUE), 2)))
+```
+
+```{r comparison_in_clusters, include=TRUE, tab.cap="Średnie wartości cech w skupieniach"}
+kable(cluster_means, caption = "Średnie wartości cech w skupieniach", label = "tab:comparison_in_clusters" )
+```
+
+
+```{r box_func}
+plot_cluster_boxplots <- function(data, cluster_col, features) {
+  library(ggplot2)
+  
+  for (feature in features) {
+    p <- ggplot(data, aes(x = .data[[cluster_col]], y = .data[[feature]], fill = .data[[cluster_col]])) +
+      geom_boxplot() +
+      labs(title = paste("Rozkład", feature, "w skupieniach"),
+           x = "Skupienie", y = feature) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5))
+    
+    print(p)
+  }
+}
+
+```
+
+```{r box_plots_clusters1, include=TRUE, fig.height=3, fig.cap="Wykresy pudełkowe wybranych cech z podziałem na skupienia"}
+
+plot_cluster_boxplots(df_with_clusters, cluster_col = "Cluster", features = "glucose")
+```
+```{r box_plots_clusters2, include=TRUE, fig.height=3, fig.cap="Wykresy pudełkowe wybranych cech z podziałem na skupienia"}
+
+plot_cluster_boxplots(df_with_clusters, cluster_col = "Cluster", features = "insulin")
+```
+
+```{r box_plots_clusters3, include=TRUE, fig.height=3, fig.cap="Wykresy pudełkowe wybranych cech z podziałem na skupienia"}
+plot_cluster_boxplots(df_with_clusters, cluster_col = "Cluster", features = "mass")
+```
+
+```{r box_plots_clusters4, include=TRUE, fig.height=3, fig.cap="Wykresy pudełkowe wybranych cech z podziałem na skupienia"}
+plot_cluster_boxplots(df_with_clusters, cluster_col = "Cluster", features = "triceps")
+```
+
+```{r box_plots_clusters5, include=TRUE, fig.height=3, fig.cap="Wykresy pudełkowe wybranych cech z podziałem na skupienia"}
+plot_cluster_boxplots(df_with_clusters, cluster_col = "Cluster", features = "pressure")
+```
+
+
+Jak przedstawiono w tabeli (dane bez standaryzacji, aby były bardziej zrozumiałe w realistycznym kontekście), największe różnice średnich wartości cech między klastrami obserwujemy dla zmiennych: glucose, pressure, triceps, insulin oraz mass — przy czym w klastrze drugim wartości te są wyraźnie wyższe. Warto jednak zauważyć, że średnia jest wrażliwa na wartości odstające, dlatego uzupełniająco przeanalizowano również wykresy pudełkowe przedstawione na wykresach \ref{fig:box_plots_clusters1}, \ref{fig:box_plots_clusters2}, \ref{fig:box_plots_clusters3}, \ref{fig:box_plots_clusters4}, \ref{fig:box_plots_clusters5}.
+
+W szczególności, mediana zmiennej glucose w klastrze 2 jest znacznie wyższa niż w klastrze 1, co prowadzi do niemal idealnej separacji między tymi grupami. Również dla zmiennej insulin różnice między klastrami są bardzo wyraźne. W przypadku cech takich jak mass, triceps oraz pressure rozkłady są bardziej zbliżone, jednak różnice nadal są zauważalne.
+
+Taki układ jest zgodny z oczekiwaniami — glukoza i insulina należą do najważniejszych parametrów różnicujących osoby zdrowe i chore na cukrzycę, co znajduje odzwierciedlenie zarówno w analizie statystycznej, jak i wizualnej.
+
+Warto jednak sprawdzić także, które obiekty są medoidami (reprezentantami skupień) w przypadku metody PAM i co je wyróżnia.
+
+```{r medo}
+pam_result <- pam(df_sample_r, k = 2)  
+
+medoid_indices <- pam_result$id.med
+
+medoids <- df_sample_r[medoid_indices, ]
+
+```
+
+```{r medoids, include=TRUE, tab.cap="Analiza meoidów dla metody PAM"}
+kable(medoids, caption = "Analiza meoidów dla metody PAM", label = "tab:medoids")
+```
+
+Analiza medoidów wyznaczonych metodą PAM (tabela \ref{tab:medoids}) dla zbioru PimaIndiansDiabetes2 wykazała znaczące różnice w charakterystykach obu skupień. Medoid pierwszego skupienia (ID 96) cechuje się wysokimi wartościami zmiennych glucose (144) i insulin (228) przy jednoczesnej podwyższonej wartości mass (33.9). Medoid drugiego skupienia (ID 652) posiada zbliżoną wartość mass (33.8), ale istotnie niższe wartości glucose (117) i insulin (106).
+
+Interesująca obserwacja dotyczy podobieństwa wartości mass przy jednoczesnych znaczących różnicach w pozostałych zmiennych. Wskazuje to, że sama analiza wskaźnika masy ciała nie pozwala na pełną charakterystykę różnic między skupieniami. Kluczowe dla rozróżnienia grup okazują się zmienne glucose i insulin, które wykazują istotnie różne wartości w obu medoidach.
+
+Warto również odnotować różnicę w wartości age między medoidami (40 vs 27), co może sugerować zależność między wiekiem a wartościami innych analizowanych zmiennych. Ta obserwacja wymagałaby jednak dalszej weryfikacji na pełnym zbiorze danych.
+
+Analiza medoidów potwierdza skuteczność metody PAM w identyfikacji wyraźnie różniących się grup obserwacji w zbiorze PimaIndiansDiabetes2.
