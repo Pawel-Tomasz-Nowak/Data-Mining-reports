@@ -430,7 +430,7 @@ Ponieważ dane w zbiorze mają różne jednostki (np. liczba ciąż, poziom gluk
 W dalszej analizie zastosowane zostaną algorytmy PAM oraz AGNES, które opierają się na macierzy odległości – standaryzacja pozwala tu uniknąć dominacji zmiennych o większym rozrzucie. Warto zaznaczyć, że w niektórych przypadkach może ona osłabić naturalną separację grup, zwłaszcza jeśli pewne cechy mają szczególnie silne znaczenie informacyjne, jednak wybrane algorytmy są mniej podatne na ten efekt (niż np. metoda k-means).
 
 ```{r preparing sample}
-set.seed(123)
+set.seed(12)
 df_sample <- df[sample(nrow(df), 200), ]
 true_labels <- df_sample$diabetes
 df_sample_r <- subset(df_sample, select=-diabetes)
@@ -496,3 +496,109 @@ fviz_dend(df.agnes.single, cex=0.4, main="Dendrogram - single linkage", k = 2, r
 ```{r agnes plot complete, include=TRUE, fig.cap="Dendrogram dla metody linkage complete"}
 fviz_dend(df.agnes.complete, cex=0.4, main="Dendrogram - complete linkage", k = 2, rect = TRUE)
 ```
+Na podstawie dendrogramów przedstawionych na wykresach \ref{fig:agnes plot agv}, \ref{fig:agnes plot single} oraz \ref{fig:agnes plot complete}, które ilustrują wyniki hierarchicznej analizy skupień dla trzech różnych metod wiązania (average, single oraz complete linkage), można zauważyć wyraźne różnice w strukturze uzyskanych klastrów oraz w sposobie grupowania obiektów.
+
+W przypadku metody average linkage, drzewo hierarchiczne ma dość zrównoważoną strukturę, a wysokości łączenia sugerują umiarkowany poziom podobieństwa między grupami. Ta metoda, jako kompromis pomiędzy single i complete linkage, prowadzi do stosunkowo czytelnej segmentacji – gałęzie są bardziej symetryczne, a różnice między klastrami umiarkowane. Ostatecznie uzyskane dwa główne klastry są względnie dobrze odseparowane, choć wciąż obecna jest pewna wewnętrzna różnorodność w obrębie skupień.
+
+Z kolei dendrogram dla single linkage charakteryzuje się silnie wydłużoną strukturą, typową dla efektu „łańcucha”. W tym przypadku poszczególne punkty są łączone głównie na podstawie lokalnych, minimalnych odległości, co skutkuje powolnym narastaniem wysokości połączeń i brakiem wyraźnych granic między większymi grupami.
+
+Dla porównania, dendrogram wygenerowany metodą complete linkage ukazuje znacznie bardziej zwartą i zrównoważoną strukturę klastrów. Maksymalna odległość między obserwacjami w obrębie jednego skupienia powoduje, że tworzone grupy są bardziej jednorodne i kompaktowe. W rezultacie granice między dwoma głównymi klastrami są tutaj najlepiej zarysowane spośród wszystkich trzech metod, co może świadczyć o większej odporności tej techniki na szum i wartości odstające.
+
+Podsumowując, metoda complete linkage wydaje się najskuteczniejsza w kontekście analizy tej próbki danych, oferując najbardziej przejrzysty podział na dwa klastry. Average linkage również daje względnie użyteczną segmentację, choć z mniej wyraźnymi granicami. Natomiast single linkage nie zapewnia odpowiednio klarownego podziału i może prowadzić do mylących interpretacji, zwłaszcza przy danych o złożonej strukturze.
+
+
+## Ocena jakości grupowania. Wybór optymalnej liczby skupień i porównanie metod
+
+
+```{r silhouette comparison, include=TRUE}
+library(cluster) 
+library(clValid)
+
+K.range <- 2:6
+
+agnes.methods <- c("average", "complete", "single")
+
+results <- data.frame()
+
+for (k in K.range) {
+  # PAM
+  pam.model <- pam(df_sample_ready, k)
+  sil.pam <- mean(silhouette(pam.model)[, 3])
+  results <- rbind(results,
+                   data.frame(K = k, Method = "pam", Silhouette = sil.pam))
+  
+  # AGNES 
+  for (method in agnes.methods) {
+    agnes.model <- agnes(df_sample_ready, method = method)
+    clust <- cutree(as.hclust(agnes.model), k = k)
+    sil.agnes <- mean(silhouette(clust, dist(df_sample_ready))[, 3])
+    method.label <- paste("agnes", method, sep = "_")
+    
+    results <- rbind(results,
+                     data.frame(K = k, Method = method.label, Silhouette = sil.agnes))
+  }
+}
+
+# Znajdź najlepszy punkt
+best <- results[which.max(results$Silhouette), ]
+
+ggplot(results, aes(x = K, y = Silhouette, color = Method)) +
+  geom_line(size = 1.2) +
+  geom_point(size = 3) +
+  geom_point(data = best, aes(x = K, y = Silhouette), color = "black", size = 4, shape = 8)  +
+  scale_x_continuous(breaks = K.range) +
+  labs(title = "Średni indeks silhouette: Porównanie metod PAM oraz AGNES (agv, complete, single)",
+       x = "Liczba klastrów (K)",
+       y = "Średni silhouette") +
+  theme_minimal()
+```
+
+
+```{r accuracy, include=TRUE, tab.cap="Porównanie zgodności partycji dla metod AGNES oraz PAM"}
+library(e1071)
+library(cluster)
+
+
+if (any(true_labels == 0)) {
+  true_labels_matched <- true_labels + 1  
+} else {
+  true_labels_matched <- true_labels
+}
+
+labels_avg <- cutree(df.agnes.avg, k = 2)
+labels_single <- cutree(df.agnes.single, k = 2)
+labels_complete <- cutree(df.agnes.complete, k = 2)
+labels_pam <- df.pam$clustering
+
+
+matched_avg <- matchClasses(table(true_labels_matched, labels_avg), method = "exact")
+matched_single <- matchClasses(table(true_labels_matched, labels_single), method = "exact")
+matched_complete <- matchClasses(table(true_labels_matched, labels_complete), method = "exact")
+matched_pam <- matchClasses(table(true_labels_matched, labels_pam), method = "exact")
+
+
+labels_avg_matched <- matched_avg[labels_avg]
+labels_single_matched <- matched_single[labels_single]
+labels_complete_matched <- matched_complete[labels_complete]
+labels_pam_matched <- matched_pam[labels_pam]
+
+accuracy_avg <- mean(labels_avg_matched == true_labels_matched)
+accuracy_single <- mean(labels_single_matched == true_labels_matched)
+accuracy_complete <- mean(labels_complete_matched == true_labels_matched)
+accuracy_pam <- mean(labels_pam_matched == true_labels_matched)
+
+results <- data.frame(
+  Algorithm = c("AGNES (average)", "AGNES (single)", "AGNES (complete)", "PAM"),
+  Accuracy = c(accuracy_avg, accuracy_single, accuracy_complete, accuracy_pam)
+)
+
+
+kable(results, 
+      caption = "Porównanie dokładności (accuracy) algorytmów grupowania",
+      col.names = c("Algorytm", "Dokładność (Accuracy)"),
+      digits = 3) %>%
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"), 
+                full_width = FALSE)
+
+```
+
